@@ -54,7 +54,7 @@ By the end of this workshop, you will have:
 
 ```bash
 # 1. Clone this repo
-git clone git clone https://github.com/faisalcodesinfrastructure/scale23x-k8s-workshop.git
+git clone https://github.com/faisalcodesinfrastructure/scale23x-k8s-workshop.git
 cd scale23x-k8s-workshop
 
 # 2. Create the KIND cluster
