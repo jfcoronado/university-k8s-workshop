@@ -1,0 +1,65 @@
+name: Workshop YAML Validation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-yaml:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.29.0'
+
+      - name: Install KIND
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Create KIND cluster
+        run: kind create cluster --name ci --config manifests/kind-config.yaml
+
+      - name: Validate all manifests (dry-run)
+        run: |
+          kubectl apply --dry-run=client -f manifests/namespace.yaml
+          kubectl apply --dry-run=client -f manifests/configmap.yaml
+          kubectl apply --dry-run=client -f manifests/secret.yaml
+          kubectl apply --dry-run=client -f manifests/deployment.yaml
+          kubectl apply --dry-run=client -f manifests/service.yaml
+
+      - name: Apply namespace and install Ingress Controller
+        run: |
+          kubectl apply -f manifests/namespace.yaml
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+          kubectl wait --namespace ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=90s
+
+      - name: Apply all manifests
+        run: |
+          kubectl apply -f manifests/configmap.yaml
+          kubectl apply -f manifests/secret.yaml
+          kubectl apply -f manifests/deployment.yaml
+          kubectl apply -f manifests/service.yaml
+          kubectl apply -f manifests/ingress.yaml
+
+      - name: Wait for deployment
+        run: |
+          kubectl rollout status deployment/demo-app -n workshop-app --timeout=120s
+
+      - name: Verify pods are running
+        run: |
+          kubectl get pods -n workshop-app
+          kubectl get svc -n workshop-app
+          kubectl get ingress -n workshop-app

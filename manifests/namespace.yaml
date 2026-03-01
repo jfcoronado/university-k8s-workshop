@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: workshop-app
+  labels:
+    environment: workshop
+    managed-by: kubectl

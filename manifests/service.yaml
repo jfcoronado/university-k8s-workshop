@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-app-svc
+  namespace: workshop-app
+  labels:
+    app: demo-app
+spec:
+  selector:
+    app: demo-app
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80           # Port the Service listens on (clients use this)
+      targetPort: 3000   # Port the Node.js app listens on inside the Pod
+  type: ClusterIP        # Internal only - Ingress handles external access
