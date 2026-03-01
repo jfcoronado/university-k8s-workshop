@@ -97,8 +97,23 @@ k8s-workshop/
 
 ## 🙌 About
 
-Workshop presented at **SCaLE Linux Expo** by a [CNCF Ambassador](https://www.cncf.io/people/ambassadors/) and organizer of [Cloud Native LA](https://www.meetup.com/cloud-native-la/).
+Workshop presented at **SCaLE Linux Expo** by Faisal, a Principal Technical Consultant Lead **AHEAD**, specializing in cloud-native transformations, platform engineering, and enterprise architecture.
+
+A [CNCF and Platform Engineering Ambassador](https://www.cncf.io/people/ambassadors/) (https://platformengineering.org/ambassador-program) and organizer of [Cloud Native LA](https://community.cncf.io/cloud-native-los-angeles/).
 
 - 🐦 Questions? Open an [Issue](../../issues)
 - 💬 Join [CNCF Slack](https://slack.cncf.io/) — #kubernetes channel
 - 📚 [Official Kubernetes Docs](https://kubernetes.io/docs/)
+
+
+### 🔗 Connect
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/faisalafzal/)
+
+- 💼 **Company:** [AHEAD](https://www.ahead.com)
+- 🌐 **Community:** [Cloud Native LA](https://community.cncf.io/cloud-native-los-angeles/)
+- 🐦 **Questions?** Open an [Issue](../../issues) or reach out on LinkedIn
+
+---
+
+*If you found this workshop helpful, consider giving the repo a ⭐ — it helps others find it!*
