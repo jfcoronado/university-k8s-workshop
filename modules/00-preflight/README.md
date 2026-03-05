@@ -9,6 +9,9 @@ Goal: Install tools, verify them, and pre-pull key images before the workshop.
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+echo >> /Users/Bryan/.zprofile
+echo 'eval "$(/opt/homebrew/bin/brew shellenv zsh)"' >> /Users/Bryan/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv zsh)"
 brew install git
 brew install --cask docker
 brew install kind kubectl helm
