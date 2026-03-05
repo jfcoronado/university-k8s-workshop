@@ -15,3 +15,8 @@ nodes:
       - containerPort: 443
         hostPort: 443
         protocol: TCP
+  # NOT FOR WORKSHOP Uncomment the worker nodes to add 1, 2, or all 3 workers
+  # Recommended: 8GB+ RAM free before enabling multiple workers
+  # - role: worker
+  # - role: worker
+  # - role: worker

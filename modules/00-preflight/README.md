@@ -8,6 +8,7 @@ Goal: Install tools, verify them, and pre-pull key images before the workshop.
 ### macOS
 
 ```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install git
 brew install --cask docker
 brew install kind kubectl helm
@@ -17,7 +18,7 @@ brew install kind kubectl helm
 
 ```bash
 
-sudo apt update && sudo apt install -y git
+sudo apt update && sudo apt install -y git curl
 
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
