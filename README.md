@@ -55,8 +55,8 @@ Al finalizar este taller, tendrás:
 ### 1. Clona este repositorio
 
 ```bash
-git clone https://github.com/faisalcodesinfrastructure/scale23x-k8s-workshop.git
-cd scale23x-k8s-workshop
+git clone https://github.com/jfcoronado/university-k8s-workshop
+cd university-k8s-workshop
 ````
 
 ### 2. Descarga previamente las imágenes
@@ -175,22 +175,11 @@ Este taller está basado en el workshop original de Kubernetes creado por **Fais
 
 Este fork ha sido adaptado y mantenido para una audiencia, entorno de aprendizaje y formato de presentación diferentes.
 
+Adaptado y mantenido por Jose Coronado.
+
 * 📚 [Documentación oficial de Kubernetes](https://kubernetes.io/docs/)
 * 💬 Únete a [CNCF Slack](https://slack.cncf.io/) — canal #kubernetes
 
 ---
 
 *Si este taller te resultó útil, considera darle una ⭐ al repositorio. Eso ayuda a que otras personas lo encuentren.*
-
-````
-
-Y te recomiendo además hacer estos ajustes antes de subirlo:
-
-- cambiar la URL de `git clone` por la de tu fork
-- cambiar `cd scale23x-k8s-workshop` por el nombre real de tu repo
-- revisar si en otros archivos aparece `SCaLE`, `AHEAD`, `Faisal`, o `scale23x`
-- si quieres, agregar una línea como esta en créditos:
-
-```md
-Adaptado y mantenido por Jose Coronado.
-````
