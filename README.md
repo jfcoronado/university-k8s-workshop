@@ -1,72 +1,72 @@
-# ☸️ Kubernetes for Beginners — SCaLE Workshop
+# ☸️ Taller de Kubernetes para Principiantes
 
-Welcome workshop participants! This repository contains everything you need to follow along with the **Kubernetes for Beginners** workshop at [SCaLE (Southern California Linux Expo)](https://www.socallinuxexpo.org/).
+¡Bienvenido! Este repositorio contiene todo lo necesario para seguir un taller introductorio de **Kubernetes para Principiantes**.
 
----
-
-## 🎯 What You'll Build
-
-By the end of this workshop, you will have:
-
-- ✅ A local Kubernetes cluster running with KIND
-- ✅ A real app deployed with Namespaces, Deployments, and Pods
-- ✅ A Service exposing your app inside the cluster
-- ✅ Traefik Ingress routing external HTTP traffic (installed via Helm)
-- ✅ ConfigMaps and Secrets injected into your app as env vars and mounted files
-- ✅ Horizontal scaling and zero-downtime rolling updates
-- ✅ A rollback strategy for bad deploys
+Este fork está basado en el taller original creado por **Faisal Afzal** y ha sido adaptado para una audiencia, contexto y formato de entrega diferentes.
 
 ---
 
-## 🗂️ Workshop Modules
+## 🎯 Qué vas a construir
 
-| # | Module | Time |
+Al finalizar este taller, tendrás:
+
+- ✅ Un clúster local de Kubernetes ejecutándose con KIND
+- ✅ Una aplicación real desplegada con Namespaces, Deployments y Pods
+- ✅ Un Service exponiendo tu aplicación dentro del clúster
+- ✅ Traefik Ingress enroutando tráfico HTTP externo (instalado mediante Helm)
+- ✅ ConfigMaps y Secrets inyectados en tu aplicación como variables de entorno y archivos montados
+- ✅ Escalado horizontal y actualizaciones continuas sin tiempo de inactividad
+- ✅ Una estrategia de rollback para despliegues fallidos
+
+---
+
+## 🗂️ Módulos del taller
+
+| # | Módulo | Tiempo |
 |---|--------|------|
-| 0 | [Pre-Flight Checklist](modules/00-preflight/README.md) | 15 min |
-| 1 | [Containers & Kubernetes Concepts](modules/01-concepts/README.md) | 20 min |
-| 2 | [Creating Your KIND Cluster](modules/02-kind-cluster/README.md) | 20 min |
-| 3 | [Namespaces — Organizing Your Cluster](modules/03-namespaces/README.md) | 10 min |
-| 4 | [Deployments — Running Your App](modules/04-deployments/README.md) | 25 min |
-| 5 | [Services — Internal Networking](modules/05-services/README.md) | 20 min |
-| 6 | [Ingress — External Traffic Routing with Traefik](modules/06-ingress/README.md) | 25 min |
-| 7 | [ConfigMaps & Secrets](modules/07-configmaps-secrets/README.md) | 20 min |
-| 8 | [Scaling & Rolling Updates](modules/08-scaling-updates/README.md) | 20 min |
-| 9 | [Bonus: Troubleshooting & Tips](modules/09-bonus/README.md) | open |
+| 0 | [Lista de verificación previa](modules/00-preflight/README.md) | 15 min |
+| 1 | [Contenedores y conceptos de Kubernetes](modules/01-concepts/README.md) | 20 min |
+| 2 | [Creación de tu clúster KIND](modules/02-kind-cluster/README.md) | 20 min |
+| 3 | [Namespaces — Organización del clúster](modules/03-namespaces/README.md) | 10 min |
+| 4 | [Deployments — Ejecución de tu aplicación](modules/04-deployments/README.md) | 25 min |
+| 5 | [Services — Redes internas](modules/05-services/README.md) | 20 min |
+| 6 | [Ingress — Enrutamiento de tráfico externo con Traefik](modules/06-ingress/README.md) | 25 min |
+| 7 | [ConfigMaps y Secrets](modules/07-configmaps-secrets/README.md) | 20 min |
+| 8 | [Escalado y Rolling Updates](modules/08-scaling-updates/README.md) | 20 min |
+| 9 | [Bonus: Solución de problemas y recomendaciones](modules/09-bonus/README.md) | abierto |
 
 ---
 
+## ⚙️ Requisitos previos
 
-
-## ⚙️ Prerequisites
-
-| Tool | Min Version | Install |
+| Herramienta | Versión mínima | Instalación |
 |------|-------------|---------|
 | Docker Desktop | v24+ | [docs.docker.com/get-docker](https://docs.docker.com/get-docker/) |
 | kind | v0.23+ | [kind.sigs.k8s.io](https://kind.sigs.k8s.io/) |
 | kubectl | v1.29+ | [kubernetes.io/docs/tasks/tools](https://kubernetes.io/docs/tasks/tools/) |
 | helm | v3.14+ | [helm.sh/docs/intro/install](https://helm.sh/docs/intro/install/) |
 
-> 💡 **New to the command line?** Check the [scripts/](scripts/) folder for helper shell scripts.
+> 💡 **¿Eres nuevo en la línea de comandos?** Revisa la carpeta [scripts/](scripts/) para encontrar scripts de apoyo.
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Inicio rápido
 
-### 1. Clone this repo
+### 1. Clona este repositorio
 
 ```bash
 git clone https://github.com/faisalcodesinfrastructure/scale23x-k8s-workshop.git
 cd scale23x-k8s-workshop
-```
+````
 
-### 2. Pre-pull images
+### 2. Descarga previamente las imágenes
 
 ```bash
 docker pull kindest/node:v1.29.0
 docker pull traefik:v3.0
 ```
 
-### 3. Create the KIND cluster
+### 3. Crea el clúster KIND
 
 ```bash
 kind create cluster --name workshop --config manifests/kind-config.yaml
@@ -74,7 +74,7 @@ kubectl config use-context kind-workshop
 kubectl wait --for=condition=Ready node --all --timeout=120s
 ```
 
-### 4. Install Traefik Ingress Controller
+### 4. Instala el controlador Traefik Ingress
 
 ```bash
 helm repo add traefik https://traefik.github.io/charts
@@ -87,6 +87,7 @@ helm upgrade --install traefik traefik/traefik \
 ```
 
 **PowerShell:**
+
 ```powershell
 helm repo add traefik https://traefik.github.io/charts
 helm repo update
@@ -97,14 +98,14 @@ helm upgrade --install traefik traefik/traefik `
   --wait
 ```
 
-### 5. Build and load the workshop app
+### 5. Construye y carga la aplicación del taller
 
 ```bash
 docker build -t k8s-workshop-demo:1.0.0 ./app
 kind load docker-image k8s-workshop-demo:1.0.0 --name workshop
 ```
 
-### 6. Apply all manifests
+### 6. Aplica todos los manifiestos
 
 ```bash
 kubectl apply -f manifests/namespace.yaml
@@ -116,32 +117,34 @@ kubectl apply -f manifests/ingress.yaml
 kubectl rollout status deployment/demo-app -n workshop-app --timeout=120s
 ```
 
-### 7. Add hosts file entry
+### 7. Agrega la entrada al archivo hosts
 
 **macOS / Linux / WSL:**
+
 ```bash
 echo '127.0.0.1 demo.local' | sudo tee -a /etc/hosts
 ```
 
-**Windows (PowerShell as Administrator):**
+**Windows (PowerShell como administrador):**
+
 ```powershell
 Add-Content -Path "$env:SystemRoot\System32\drivers\etc\hosts" -Value "127.0.0.1 demo.local"
 ```
 
-### 8. Verify
+### 8. Verifica
 
-Open **http://demo.local** in your browser.
+Abre **[http://demo.local](http://demo.local)** en tu navegador.
 
-### 9. Follow the modules in order
+### 9. Sigue los módulos en orden
 
 ---
 
-## 🧱 Repo Structure
+## 🧱 Estructura del repositorio
 
 ```
 k8s-workshop/
-├── README.md                    ← You are here
-├── manifests/                   ← All YAML files (apply these!)
+├── README.md                    ← Estás aquí
+├── manifests/                   ← Todos los archivos YAML (¡aplica estos!)
 │   ├── kind-config.yaml
 │   ├── namespace.yaml
 │   ├── deployment.yaml
@@ -149,42 +152,45 @@ k8s-workshop/
 │   ├── ingress.yaml
 │   ├── configmap.yaml
 │   └── secret.yaml
-├── app/                         ← Demo app source (optional)
+├── app/                         ← Código fuente de la aplicación de demostración (opcional)
 │   ├── Dockerfile
 │   └── index.html
-├── modules/                     ← Step-by-step module guides
+├── modules/                     ← Guías paso a paso por módulo
 │   ├── 00-preflight/
 │   ├── 01-concepts/
 │   └── ...
-├── scripts/                     ← Helper scripts
+├── scripts/                     ← Scripts de apoyo
 │   ├── setup.sh / setup.ps1
 │   ├── teardown.sh / teardown.ps1
 │   └── verify.sh / verify.ps1
-└── docs/                        ← Extra reference material
+└── docs/                        ← Material de referencia adicional
     └── kubectl-cheatsheet.md
 ```
 
 ---
 
-## 🙌 About
+## 🙌 Créditos
 
-Workshop presented at **SCaLE Linux Expo** by Faisal, a Principal Technical Consultant Lead at **AHEAD**, specializing in cloud-native transformations, platform engineering, and enterprise architecture.
+Este taller está basado en el workshop original de Kubernetes creado por **Faisal Afzal**.
 
-A [CNCF Ambassador](https://www.cncf.io/people/ambassadors/) and [Platform Engineering Ambassador](https://platformengineering.org/ambassador-program) and organizer of [Cloud Native LA](https://community.cncf.io/cloud-native-los-angeles/).
+Este fork ha sido adaptado y mantenido para una audiencia, entorno de aprendizaje y formato de presentación diferentes.
 
-- 🐦 Questions? Open an [Issue](../../issues)
-- 💬 Join [CNCF Slack](https://slack.cncf.io/) — #kubernetes channel
-- 📚 [Official Kubernetes Docs](https://kubernetes.io/docs/)
-
-
-### 🔗 Connect
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/faisalafzal/)
-
-- 💼 **Company:** [AHEAD](https://www.ahead.com)
-- 🌐 **Community:** [Cloud Native LA](https://community.cncf.io/cloud-native-los-angeles/)
-- 🐦 **Questions?** Open an [Issue](../../issues) or reach out on LinkedIn
+* 📚 [Documentación oficial de Kubernetes](https://kubernetes.io/docs/)
+* 💬 Únete a [CNCF Slack](https://slack.cncf.io/) — canal #kubernetes
 
 ---
 
-*If you found this workshop helpful, consider giving the repo a ⭐ — it helps others find it!*
+*Si este taller te resultó útil, considera darle una ⭐ al repositorio. Eso ayuda a que otras personas lo encuentren.*
+
+````
+
+Y te recomiendo además hacer estos ajustes antes de subirlo:
+
+- cambiar la URL de `git clone` por la de tu fork
+- cambiar `cd scale23x-k8s-workshop` por el nombre real de tu repo
+- revisar si en otros archivos aparece `SCaLE`, `AHEAD`, `Faisal`, o `scale23x`
+- si quieres, agregar una línea como esta en créditos:
+
+```md
+Adaptado y mantenido por Jose Coronado.
+````
