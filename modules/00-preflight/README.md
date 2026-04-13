@@ -1,4 +1,3 @@
-````markdown
 # Módulo 0 - Lista de verificación previa al vuelo (multiplataforma)
 
 Tiempo: 15 minutos  
@@ -130,6 +129,3 @@ powershell -ExecutionPolicy Bypass -File .\platform-edition\scripts\setup.ps1
 ## Siguiente paso
 
 Continúa con el Módulo 1 del contenido original del workshop.
-
-```
-```
