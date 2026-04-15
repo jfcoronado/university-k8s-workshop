@@ -13,22 +13,16 @@ Los Pods son **efímeros** — aparecen y desaparecen. Cuando un Pod es reemplaz
 **Solución:** Un **Service** le da a un conjunto de Pods una **dirección estable y permanente** (nombre DNS + ClusterIP) que nunca cambia, aunque los Pods vayan y vengan.
 
 ```
+Antes del Service:                      Después del Service:
 
-Antes del Service:               Después del Service:
+Cliente → IP del Pod (¡cambia!)         Cliente → Service (¡estable!)
+                                              │
+                                              ├── Pod 1 (10.244.0.5)
+                                              ├── Pod 2 (10.244.0.6)
+                                              └── Pod 3 (10.244.0.7)
 
-Cliente → IP del Pod (¡cambia!)  Cliente → Service (¡estable!)
-│
-├── Pod 1 (10.244.0.5)
-├── Pod 2 (10.244.0.6)
-└── Pod 3 (10.244.0.7)
-
+                                        El Service balancea la carga entre Pods saludables
 ```
-                               El Service balancea la carga entre Pods saludables
-```
-
-````
-
----
 
 ## Tipos de Service
 
