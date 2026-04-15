@@ -1,55 +1,58 @@
-# Module 4 — Deployments: Running Your App
+# Módulo 4 — Deployments: Ejecutando tu aplicación
 
-> ⏱️ **Time:** 25 minutes | 🎯 **Goal:** Build the workshop app, load it into KIND, deploy it, and prove self-healing works
+> ⏱️ **Tiempo:** 25 minutos | 🎯 **Objetivo:** Construir la app del workshop, cargarla en KIND, desplegarla y demostrar que la autoreparación funciona
 
 ---
 
-## Pods vs Deployments — What's the Difference?
+## Pods vs Deployments — ¿Cuál es la diferencia?
 
-**Pod:** Runs one or more containers. If it crashes, it stays dead.
+**Pod:** Ejecuta uno o más contenedores. Si falla, se queda muerto.
 
-**Deployment:** A controller that manages Pods. If a Pod crashes, the Deployment creates a new one.
+**Deployment:** Un controlador que administra Pods. Si un Pod falla, el Deployment crea uno nuevo.
 
 ```
+
 Deployment
-└── ReplicaSet (manages N identical pods)
-    ├── Pod 1  ← app container running here
-    ├── Pod 2  ← app container running here
-    └── Pod 3  ← app container running here
-```
+└── ReplicaSet (administra N pods idénticos)
+├── Pod 1  ← aquí corre el contenedor de la app
+├── Pod 2  ← aquí corre el contenedor de la app
+└── Pod 3  ← aquí corre el contenedor de la app
 
-> 🔑 **In practice: never create bare Pods.** Always use a Deployment (or StatefulSet for stateful apps).
+````
+
+> 🔑 **En la práctica: nunca crees Pods sueltos.** Usa siempre un Deployment, o un StatefulSet si es una app con estado.
 
 ---
 
-## Step 1: Build the Workshop App
+## Paso 1: Construir la app del workshop
 
-Our demo app is a Node.js server in the `app/` folder. Let's build it into a Docker image:
+Nuestra app demo es un servidor Node.js en la carpeta `app/`. Vamos a construirla como una imagen de Docker:
 
 ```bash
 docker build -t k8s-workshop-demo:1.0.0 ./app
-```
+````
 
-Verify the image was built:
+Verifica que la imagen fue construida:
+
 ```bash
 docker images | grep k8s-workshop-demo
 ```
 
 ---
 
-## Step 2: Load the Image into KIND
+## Paso 2: Cargar la imagen en KIND
 
-KIND runs Kubernetes inside Docker containers. Those containers can't see images in your local Docker daemon by default — you need to explicitly load them in:
+KIND ejecuta Kubernetes dentro de contenedores Docker. Esos contenedores no pueden ver por defecto las imágenes de tu daemon local de Docker, así que necesitas cargarlas explícitamente:
 
 ```bash
 kind load docker-image k8s-workshop-demo:1.0.0 --name workshop
 ```
 
-> 💡 This is KIND-specific. In a real cluster on AWS/GCP/Azure, you'd push to a container registry (ECR, GCR, GHCR) and Kubernetes would pull from there.
+> 💡 Esto es específico de KIND. En un clúster real en AWS, GCP o Azure, subirías la imagen a un registry de contenedores como ECR, GCR o GHCR, y Kubernetes la descargaría desde allí.
 
 ---
 
-## Step 3: Review the Deployment YAML
+## Paso 3: Revisar el YAML del Deployment
 
 ```bash
 cat manifests/deployment.yaml
@@ -57,31 +60,31 @@ cat manifests/deployment.yaml
 
 ```yaml
 # manifests/deployment.yaml
-apiVersion: apps/v1          # API group for Deployments
-kind: Deployment             # The object type
+apiVersion: apps/v1          # Grupo API para Deployments
+kind: Deployment             # Tipo de objeto
 metadata:
-  name: demo-app             # Name of this Deployment
-  namespace: workshop-app    # Which namespace
+  name: demo-app             # Nombre de este Deployment
+  namespace: workshop-app    # Namespace donde se crea
   labels:
     app: demo-app
 spec:
-  replicas: 2                # How many Pods to keep running
+  replicas: 2                # Cuántos Pods deben mantenerse corriendo
   selector:
     matchLabels:
-      app: demo-app          # The Deployment manages Pods with this label
-  template:                  # Pod blueprint starts here
+      app: demo-app          # El Deployment administra Pods con esta etiqueta
+  template:                  # Aquí empieza la plantilla del Pod
     metadata:
       labels:
-        app: demo-app        # Label every Pod gets (must match selector above!)
+        app: demo-app        # Etiqueta que recibe cada Pod, debe coincidir con el selector
     spec:
       containers:
         - name: demo-app
-          image: k8s-workshop-demo:1.0.0   # The image we just built and loaded
-          imagePullPolicy: Never            # Use local image, don't try to pull
+          image: k8s-workshop-demo:1.0.0   # La imagen que acabamos de construir y cargar
+          imagePullPolicy: Never            # Usa imagen local, no intentes descargarla
           ports:
             - containerPort: 3000
           env:
-            # Downward API — Kubernetes injects Pod metadata as env vars
+            # Downward API — Kubernetes inyecta metadatos del Pod como variables de entorno
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
@@ -100,18 +103,18 @@ spec:
               value: "1.0.0"
           resources:
             requests:
-              cpu: 100m        # 100 millicores = 0.1 CPU core (guaranteed)
-              memory: 64Mi     # 64 MiB RAM (guaranteed)
+              cpu: 100m        # 100 millicores = 0.1 núcleo de CPU garantizado
+              memory: 64Mi     # 64 MiB de RAM garantizados
             limits:
-              cpu: 250m        # Max CPU this container can use
-              memory: 128Mi    # Max RAM — container is OOMKilled if exceeded
-          readinessProbe:      # Is the app ready to receive traffic?
+              cpu: 250m        # Máximo CPU que puede usar este contenedor
+              memory: 128Mi    # Máxima RAM — el contenedor será OOMKilled si la excede
+          readinessProbe:      # ¿La app ya está lista para recibir tráfico?
             httpGet:
               path: /health
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
-          livenessProbe:       # Is the app alive? Restart if not.
+          livenessProbe:       # ¿La app sigue viva? Reiníciala si no.
             httpGet:
               path: /health
               port: 3000
@@ -119,45 +122,46 @@ spec:
             periodSeconds: 20
 ```
 
-### Key Fields Explained
+### Campos clave explicados
 
-| Field | What it means |
-|-------|--------------|
-| `replicas: 2` | Always keep 2 Pods running |
-| `selector.matchLabels` | How the Deployment finds its Pods — must match `template.metadata.labels` |
-| `imagePullPolicy: Never` | Use the locally loaded image — never try to pull from a registry |
-| `resources.requests` | Minimum resources reserved for scheduling |
-| `resources.limits` | Hard cap — container is OOMKilled if memory exceeded |
-| `readinessProbe` | K8s waits for this to pass before sending traffic to the Pod |
-| `livenessProbe` | K8s restarts the Pod if this keeps failing |
+| Campo                    | Qué significa                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| `replicas: 2`            | Mantén siempre 2 Pods corriendo                                                       |
+| `selector.matchLabels`   | Cómo el Deployment encuentra sus Pods — debe coincidir con `template.metadata.labels` |
+| `imagePullPolicy: Never` | Usa la imagen local cargada — nunca intentes descargarla desde un registry            |
+| `resources.requests`     | Recursos mínimos reservados para planificar el Pod                                    |
+| `resources.limits`       | Límite duro — el contenedor será OOMKilled si supera la memoria                       |
+| `readinessProbe`         | K8s espera a que esto pase antes de enviar tráfico al Pod                             |
+| `livenessProbe`          | K8s reinicia el Pod si esto sigue fallando                                            |
 
-### The Downward API
-The `fieldRef` env vars are a Kubernetes feature called the **Downward API** — it lets a Pod learn about itself (its own name, IP, namespace, node) without calling the API server. Our app displays these values on the page, which is how you'll see the pod name change as requests are load-balanced.
+### La Downward API
 
-### CPU Units
+Las variables `fieldRef` son una función de Kubernetes llamada **Downward API** — permite que un Pod aprenda sobre sí mismo, como su nombre, IP, namespace o nodo, sin llamar al API server. Nuestra app muestra estos valores en pantalla, así que podrás ver cómo cambia el nombre del Pod cuando las solicitudes se balancean entre ellos.
 
-| Value | Meaning |
-|-------|---------|
-| `1` | 1 full CPU core |
-| `500m` | 0.5 CPU core (500 millicores) |
-| `100m` | 0.1 CPU core (100 millicores) |
+### Unidades de CPU
+
+| Valor  | Significado                       |
+| ------ | --------------------------------- |
+| `1`    | 1 núcleo completo de CPU          |
+| `500m` | 0.5 núcleo de CPU, 500 millicores |
+| `100m` | 0.1 núcleo de CPU, 100 millicores |
 
 ---
 
-## Step 4: Update the Image in deployment.yaml
+## Paso 4: Actualizar la imagen en deployment.yaml
 
-Before applying, update the image line in `manifests/deployment.yaml` to use the local image:
+Antes de aplicar, actualiza la línea de la imagen en `manifests/deployment.yaml` para usar la imagen local:
 
 ```yaml
 image: k8s-workshop-demo:1.0.0
 imagePullPolicy: Never
 ```
 
-> The file currently has a placeholder registry URL. Replace it with the above two lines.
+> El archivo actualmente tiene una URL de registry de ejemplo. Reemplázala por esas dos líneas.
 
 ---
 
-## Step 5: Apply the Deployment
+## Paso 5: Aplicar el Deployment
 
 ```bash
 kubectl apply -f manifests/deployment.yaml
@@ -165,15 +169,16 @@ kubectl apply -f manifests/deployment.yaml
 
 ---
 
-## Step 6: Watch Pods Start Up
+## Paso 6: Ver cómo arrancan los Pods
 
 ```bash
-# Watch in real time (Ctrl+C to stop)
+# Ver en tiempo real, Ctrl+C para detener
 kubectl get pods -n workshop-app -w
 ```
 
-Expected output:
-```
+Salida esperada:
+
+```text
 NAME                        READY   STATUS    RESTARTS   AGE
 demo-app-7d9f8b6c4-abc12   1/1     Running   0          30s
 demo-app-7d9f8b6c4-xyz34   1/1     Running   0          30s
@@ -181,41 +186,42 @@ demo-app-7d9f8b6c4-xyz34   1/1     Running   0          30s
 
 ---
 
-## Step 7: Inspect Your Deployment and Pods
+## Paso 7: Inspeccionar tu Deployment y Pods
 
 ```bash
-# Overall Deployment status
+# Estado general del Deployment
 kubectl get deployment demo-app -n workshop-app
 
-# Detailed view with events and conditions
+# Vista detallada con eventos y condiciones
 kubectl describe deployment demo-app -n workshop-app
 
-# Describe a specific pod
+# Describir un Pod específico
 kubectl describe pod <pod-name> -n workshop-app
 
-# What to look for: Events section at the bottom, Conditions, probe status
+# Qué revisar: Events al final, Conditions y estado de las probes
 ```
 
 ---
 
-## Step 8: View Logs
+## Paso 8: Ver logs
 
 ```bash
-# Logs from a specific pod
+# Logs de un Pod específico
 kubectl logs <pod-name> -n workshop-app
 
-# Stream logs live
+# Ver logs en vivo
 kubectl logs -f <pod-name> -n workshop-app
 
-# Logs from ALL pods matching the label at once
+# Logs de TODOS los Pods con esa etiqueta
 kubectl logs -l app=demo-app -n workshop-app
 
-# Previous container logs (useful after a crash)
+# Logs del contenedor anterior, útil después de un fallo
 kubectl logs <pod-name> -n workshop-app --previous
 ```
 
-You should see lines like:
-```
+Deberías ver líneas como estas:
+
+```text
 ☸  Workshop demo app running on port 3000
    Pod: demo-app-7d9f8b6c4-abc12
    Env: workshop | Version: 1.0.0
@@ -223,55 +229,55 @@ You should see lines like:
 
 ---
 
-## Step 9: Execute into a Pod
+## Paso 9: Entrar a un Pod
 
 ```bash
-# Open a shell inside a running container
+# Abrir una shell dentro de un contenedor en ejecución
 kubectl exec -it <pod-name> -n workshop-app -- /bin/sh
 
-# Once inside, try:
+# Una vez dentro, prueba:
 wget -qO- localhost:3000/health
 hostname
 env | grep POD
 exit
 ```
 
-> 💡 This is like SSH-ing into a container. Very useful for debugging!
+> 💡 Esto es como hacer SSH dentro de un contenedor. Muy útil para depuración.
 
 ---
 
-## 🧪 Lab: Self-Healing Demo
+## 🧪 Laboratorio: Demostración de autoreparación
 
-This is the crowd-pleaser! Watch Kubernetes automatically replace a crashed Pod:
+Esta es la parte que más llama la atención. Mira cómo Kubernetes reemplaza automáticamente un Pod caído:
 
 ```bash
-# Terminal 1: Watch pods continuously
+# Terminal 1: observar los Pods continuamente
 kubectl get pods -n workshop-app -w
 
-# Terminal 2: Delete a pod to simulate a crash
+# Terminal 2: borrar un Pod para simular un fallo
 kubectl delete pod <pod-name> -n workshop-app
 ```
 
-Watch Terminal 1 — within seconds a **new Pod** appears with a new name!
+Observa la Terminal 1 — en pocos segundos aparece un **Pod nuevo** con un nombre nuevo.
 
-The Deployment controller noticed `actual (1) < desired (2)` and immediately created a replacement. The app never went down because the second replica kept serving traffic.
+El controlador del Deployment detectó que `actual (1) < desired (2)` y creó de inmediato un reemplazo. La app nunca cayó porque la segunda réplica siguió atendiendo tráfico.
 
 ---
 
-## Labels & Selectors
+## Labels y Selectors
 
-Labels are key-value pairs on any K8s object. Selectors filter by labels.
+Las labels son pares clave-valor en cualquier objeto de K8s. Los selectors filtran por labels.
 
 ```bash
-# Show labels on pods
+# Mostrar labels en los Pods
 kubectl get pods -n workshop-app --show-labels
 
-# Filter pods by label
+# Filtrar Pods por label
 kubectl get pods -n workshop-app -l app=demo-app
 ```
 
-> 🔑 Labels are how Kubernetes connects objects. The Deployment finds its Pods by label. The Service (next module) finds Pods to load-balance by label. This loose coupling is powerful.
+> 🔑 Las labels son la forma en que Kubernetes conecta objetos. El Deployment encuentra sus Pods por label. El Service, en el siguiente módulo, encuentra los Pods que debe balancear por label. Ese acoplamiento flexible es muy poderoso.
 
 ---
 
-**➡️ Next:** [Module 5 — Services](../05-services/README.md)
+**➡️ Siguiente:** [Módulo 5 — Services](../05-services/README.md)

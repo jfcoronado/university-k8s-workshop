@@ -1,201 +1,211 @@
-# Module 9 — Bonus: Troubleshooting & Next Steps
+# Módulo 9 — Bonus: Solución de problemas y próximos pasos
 
-> ⏱️ **Time:** Open-ended | 🎯 **Goal:** Debug common issues and know where to go next
-
----
-
-## Common Pod States & What They Mean
-
-| Status | Meaning | Fix |
-|--------|---------|-----|
-| `Pending` | Scheduler can't place the pod | Check resources, node selectors, taints |
-| `ContainerCreating` | Image pulling or volume mounting | Wait, or check image name/pull secrets |
-| `Running` | Container is running | Normal |
-| `CrashLoopBackOff` | Container keeps crashing | Check logs: `kubectl logs <pod> --previous` |
-| `OOMKilled` | Container exceeded memory limit | Increase memory limits |
-| `ImagePullBackOff` | Can't pull the image | Check image name, registry access, pull secrets |
-| `ErrImagePull` | Image pull failed once | Check image name/tag, network |
-| `Terminating` | Pod is being deleted | Normal, or check finalizers if stuck |
-| `Error` | Container exited with error | Check logs |
+> ⏱️ **Tiempo:** Abierto | 🎯 **Objetivo:** Depurar problemas comunes y saber cuál es el siguiente paso
 
 ---
 
-## Troubleshooting Decision Tree
+## Estados comunes de los Pods y qué significan
 
-```
-Pod not working?
+| Estado | Significado | Solución |
+|--------|-------------|----------|
+| `Pending` | El scheduler no puede ubicar el pod | Revisa recursos, node selectors y taints |
+| `ContainerCreating` | Está descargando la imagen o montando volúmenes | Espera, o revisa el nombre de la imagen y los pull secrets |
+| `Running` | El contenedor está corriendo | Normal |
+| `CrashLoopBackOff` | El contenedor sigue fallando y reiniciando | Revisa logs: `kubectl logs <pod> --previous` |
+| `OOMKilled` | El contenedor superó el límite de memoria | Aumenta los límites de memoria |
+| `ImagePullBackOff` | No puede descargar la imagen | Revisa nombre de imagen, acceso al registry y pull secrets |
+| `ErrImagePull` | La descarga de la imagen falló una vez | Revisa nombre y tag de la imagen, o la red |
+| `Terminating` | El pod está siendo eliminado | Normal, o revisa finalizers si se queda atascado |
+| `Error` | El contenedor salió con error | Revisa logs |
+
+---
+
+## Árbol de decisión para troubleshooting
+
+```text
+¿El pod no funciona?
 │
 ├─ kubectl get pods -n <ns>
 │   │
-│   ├─ Status: Pending
+│   ├─ Estado: Pending
 │   │   └─ kubectl describe pod <pod> -n <ns>
-│   │       Look for: Events section — "Insufficient CPU/Memory", "Unschedulable"
+│   │       Busca: sección Events — "Insufficient CPU/Memory", "Unschedulable"
 │   │
-│   ├─ Status: CrashLoopBackOff
+│   ├─ Estado: CrashLoopBackOff
 │   │   └─ kubectl logs <pod> -n <ns> --previous
-│   │       Look for: App startup error, missing env var, failed DB connection
+│   │       Busca: error al iniciar la app, variable de entorno faltante, fallo de conexión a BD
 │   │
-│   ├─ Status: ImagePullBackOff
+│   ├─ Estado: ImagePullBackOff
 │   │   └─ kubectl describe pod <pod> -n <ns>
-│   │       Look for: Image name typo, private registry needs pull secret
+│   │       Busca: error tipográfico en el nombre de la imagen, registry privado que necesita pull secret
 │   │
-│   └─ Status: Running but app not responding
+│   └─ Estado: Running pero la app no responde
 │       ├─ kubectl exec -it <pod> -n <ns> -- curl localhost:<port>
 │       ├─ kubectl get endpoints <svc> -n <ns>
 │       └─ kubectl logs <pod> -n <ns>
-```
+````
 
 ---
 
-## Essential Debugging Commands
+## Comandos esenciales de depuración
 
 ```bash
-# 1. The "describe" command — your best friend
+# 1. El comando "describe", tu mejor amigo
 kubectl describe pod <pod-name> -n <ns>
 kubectl describe deployment <deploy-name> -n <ns>
 kubectl describe svc <svc-name> -n <ns>
 kubectl describe ingress <ingress-name> -n <ns>
 
-# 2. Events — what happened in the cluster
+# 2. Events, qué pasó dentro del clúster
 kubectl get events -n workshop-app --sort-by='.lastTimestamp'
 
 # 3. Logs
 kubectl logs <pod> -n <ns>
-kubectl logs <pod> -n <ns> --previous      # Last terminated container
-kubectl logs -l app=demo-app -n <ns>       # All pods matching label
+kubectl logs <pod> -n <ns> --previous      # Último contenedor terminado
+kubectl logs -l app=demo-app -n <ns>       # Todos los pods que coinciden con la label
 
-# 4. Shell into a pod
+# 4. Entrar a un pod
 kubectl exec -it <pod> -n <ns> -- /bin/sh
 kubectl exec -it <pod> -n <ns> -- /bin/bash
 
-# 5. Run a debug pod (ephemeral container)
+# 5. Ejecutar un pod de depuración
 kubectl run debug --image=busybox --restart=Never -it --rm -n workshop-app -- sh
 kubectl run debug --image=curlimages/curl --restart=Never -it --rm -n workshop-app \
   -- curl -v http://demo-app-svc
 
-# 6. Port forward to test services
+# 6. Port forward para probar services
 kubectl port-forward svc/demo-app-svc 8080:80 -n workshop-app
 kubectl port-forward pod/<pod-name> 8080:80 -n workshop-app
 
-# 7. Check resource usage (requires metrics-server)
+# 7. Revisar uso de recursos, requiere metrics-server
 kubectl top pods -n workshop-app
 kubectl top nodes
 ```
 
 ---
 
-## Debugging Ingress
+## Depuración de Ingress
 
 ```bash
-# 1. Is the Ingress Controller running?
+# 1. ¿Está corriendo el controlador Ingress?
 kubectl get pods -n traefik
 
-# 2. Does the Ingress have an address?
+# 2. ¿El Ingress tiene dirección?
 kubectl get ingress -n workshop-app
-# ADDRESS column should show 'localhost' or an IP
+# La columna ADDRESS debería mostrar 'localhost' o una IP
 
-# 3. Are your Service endpoints populated?
+# 3. ¿Los endpoints del Service están poblados?
 kubectl get endpoints demo-app-svc -n workshop-app
-# Empty endpoints = no pods matching the selector
+# Endpoints vacíos = no hay pods que coincidan con el selector
 
-# 4. Check the Ingress Controller logs
+# 4. Revisar logs del controlador Ingress
 kubectl logs -n traefik \
   $(kubectl get pods -n traefik -o name | grep controller | head -1)
 
-# 5. Test directly to the controller
+# 5. Probar directamente contra el controlador
 curl -H "Host: demo.local" http://localhost
 ```
 
 ---
 
-## Common Mistakes & Fixes
+## Errores comunes y cómo corregirlos
 
-### Label mismatch between Deployment selector and Pod template
+### Labels que no coinciden entre el selector del Deployment y la plantilla del Pod
+
 ```bash
-# Symptom: No endpoints for service
-# Check: Do these match?
+# Síntoma: el service no tiene endpoints
+# Revisa: ¿coinciden estos valores?
 kubectl get deploy demo-app -n workshop-app -o jsonpath='{.spec.selector}'
 kubectl get pods -n workshop-app --show-labels
 ```
 
-### Wrong namespace
+### Namespace incorrecto
+
 ```bash
-# Symptom: "not found" errors
-# Always include -n <namespace>
-kubectl get pods -n workshop-app    # NOT just: kubectl get pods
+# Síntoma: errores de "not found"
+# Incluye siempre -n <namespace>
+kubectl get pods -n workshop-app    # NO solo: kubectl get pods
 ```
 
-### Port mismatch
+### Desajuste de puertos
+
 ```bash
-# Service targetPort must match containerPort in Pod spec
-# Check:
+# El targetPort del Service debe coincidir con el containerPort del Pod
+# Revisa:
 kubectl get svc demo-app-svc -n workshop-app -o yaml | grep -A5 ports
 kubectl get pods -n workshop-app -o yaml | grep -A5 ports
 ```
 
-### Image not found in KIND
+### Imagen no encontrada en KIND
+
 ```bash
-# If using a locally built image, load it into KIND first
+# Si usas una imagen local, primero debes cargarla en KIND
 docker build -t my-app:v1 .
 kind load docker-image my-app:v1 --name workshop
-# Then set imagePullPolicy: Never in your Deployment
+# Luego usa imagePullPolicy: Never en tu Deployment
 ```
 
 ---
 
-## Clean Up the Workshop
+## Limpiar el workshop
 
-When you're done:
+Cuando termines:
 
 ```bash
-# Remove the /etc/hosts entry
+# Quitar la entrada de /etc/hosts
 sudo sed -i '' '/demo.local/d' /etc/hosts    # macOS
 sudo sed -i '/demo.local/d' /etc/hosts        # Linux
 
-# Or use the teardown script
+# O usar el script de teardown
 bash scripts/teardown.sh
 ```
 
 ---
 
-## Next Steps: What to Learn
+## Próximos pasos, qué aprender después
 
-### Immediate Next Topics
-- **Helm** — Kubernetes package manager. Install complex apps with a single command
-- **Persistent Volumes** — Give your Pods storage that survives restarts
-- **StatefulSets** — For stateful apps (databases, queues)
-- **RBAC** — Control who can do what in your cluster
-- **Network Policies** — Control which Pods can talk to which
+### Temas inmediatos
 
-### Intermediate Topics
-- **Service Mesh** (Istio / Linkerd) — mTLS, traffic splitting, observability
-- **GitOps** (ArgoCD / Flux) — Let git be the source of truth for deployments
-- **Observability** (Prometheus + Grafana) — Metrics, dashboards, alerting
-- **Cert-Manager** — Automatic TLS certificates (Let's Encrypt)
+* **Helm** — gestor de paquetes de Kubernetes. Instala apps complejas con un solo comando
+* **Persistent Volumes** — dar almacenamiento a tus Pods que sobreviva reinicios
+* **StatefulSets** — para apps con estado, como bases de datos o colas
+* **RBAC** — controlar quién puede hacer qué dentro del clúster
+* **Network Policies** — controlar qué Pods pueden hablar con otros
 
-### Certifications
-| Cert | Level | Focus |
-|------|-------|-------|
-| CKA | Intermediate | Cluster administration |
-| CKAD | Intermediate | Application development |
-| CKS | Advanced | Security |
+### Temas intermedios
 
-### Practice Environments
-- **Killercoda:** [killercoda.com](https://killercoda.com) — Free browser-based labs
-- **Play with K8s:** [labs.play-with-k8s.com](https://labs.play-with-k8s.com) — 4-hour free sessions
-- **k3d:** Lightweight alternative to KIND
-- **minikube:** Another local K8s option with add-ons
+* **Service Mesh** como Istio o Linkerd — mTLS, división de tráfico y observabilidad
+* **GitOps** con ArgoCD o Flux — usar git como fuente de verdad de los despliegues
+* **Observabilidad** con Prometheus + Grafana — métricas, dashboards y alertas
+* **Cert-Manager** — certificados TLS automáticos, como Let's Encrypt
 
-### Community
-- **CNCF Slack:** [slack.cncf.io](https://slack.cncf.io) — #kubernetes channel
-- **Cloud Native LA:** [meetup.com/cloud-native-la](https://meetup.com/cloud-native-la)
-- **Kubernetes Docs:** [kubernetes.io/docs](https://kubernetes.io/docs) — the best reference
-- **KubeWeekly newsletter:** [kubeweekly.io](https://kubeweekly.io)
+### Certificaciones
+
+| Certificación | Nivel      | Enfoque                     |
+| ------------- | ---------- | --------------------------- |
+| CKA           | Intermedio | Administración de clústeres |
+| CKAD          | Intermedio | Desarrollo de aplicaciones  |
+| CKS           | Avanzado   | Seguridad                   |
+
+### Entornos para practicar
+
+* **Killercoda:** [killercoda.com](https://killercoda.com) — laboratorios gratis en navegador
+* **Play with K8s:** [labs.play-with-k8s.com](https://labs.play-with-k8s.com) — sesiones gratis de 4 horas
+* **k3d:** alternativa ligera a KIND
+* **minikube:** otra opción local de Kubernetes con add-ons
+
+### Comunidad
+
+* **CNCF Slack:** [slack.cncf.io](https://slack.cncf.io) — canal `#kubernetes`
+* **Cloud Native LA:** [meetup.com/cloud-native-la](https://meetup.com/cloud-native-la)
+* **Documentación de Kubernetes:** [kubernetes.io/docs](https://kubernetes.io/docs) — la mejor referencia
+* **Boletín KubeWeekly:** [kubeweekly.io](https://kubeweekly.io)
 
 ---
 
-## 🙌 Thank You!
+## 🙌 ¡Gracias!
 
-You just went from zero to a fully functioning Kubernetes deployment pipeline!
+Ya pasaste de cero a un pipeline funcional de despliegue en Kubernetes.
 
-Questions after the workshop? Open an issue in this repo or find me on CNCF Slack.
+¿Preguntas después del workshop? Abre un issue en este repositorio o búscame en CNCF Slack.
+

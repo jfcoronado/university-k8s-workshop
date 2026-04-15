@@ -1,37 +1,39 @@
-# Module 6 — Ingress: External Traffic Routing
+# Módulo 6 — Ingress: Enrutamiento de tráfico externo
 
-> ⏱️ **Time:** 25 minutes | 🎯 **Goal:** Install an Ingress Controller and route external HTTP traffic to your app
+> ⏱️ **Tiempo:** 25 minutos | 🎯 **Objetivo:** Instalar un controlador Ingress y enrutar tráfico HTTP externo hacia tu aplicación
 
 ---
 
-## What is Ingress?
+## ¿Qué es Ingress?
 
-**Ingress** is a Kubernetes resource that manages external HTTP/HTTPS access to Services in a cluster.
+**Ingress** es un recurso de Kubernetes que administra el acceso HTTP/HTTPS externo hacia los Services dentro de un clúster.
 
-Think of it as a **smart router** — one entry point that directs traffic to different Services based on:
+Piensa en él como un **router inteligente** — un único punto de entrada que dirige el tráfico a distintos Services según:
 - **Hostname:** `api.example.com` → api-service, `app.example.com` → frontend-service
 - **Path:** `/api/*` → backend-service, `/` → frontend-service
 
 ```
+
 Internet
-    │
-    ▼
-Port 80 (your laptop / cloud load balancer)
-    │
-    ▼
+│
+▼
+Puerto 80 (tu laptop / balanceador de carga en la nube)
+│
+▼
 ┌─────────────────────────────────────┐
-│         Ingress Controller          │
-│       (Traefik running as a Pod)    │
+│        Controlador Ingress          │
+│      (Traefik ejecutándose como Pod)│
 │                                     │
-│  Rule: demo.local / → demo-app-svc  │
+│ Regla: demo.local / → demo-app-svc  │
 └─────────────────────────────────────┘
-    │
-    ▼
+│
+▼
 Service: demo-app-svc
-    │
-    ├── Pod 1
-    └── Pod 2
-```
+│
+├── Pod 1
+└── Pod 2
+
+````
 
 ---
 
@@ -39,88 +41,94 @@ Service: demo-app-svc
 
 | | Service LoadBalancer | Ingress |
 |--|--|--|
-| Layer | L4 (TCP/UDP) | L7 (HTTP/HTTPS) |
-| Path routing | ❌ No | ✅ Yes |
-| TLS termination | ❌ No | ✅ Yes |
-| Cost on cloud | 1 LB per service ($$) | 1 LB for all services (cheap ✅) |
-| Header manipulation | ❌ No | ✅ Yes |
+| Capa | L4 (TCP/UDP) | L7 (HTTP/HTTPS) |
+| Enrutamiento por path | ❌ No | ✅ Sí |
+| Terminación TLS | ❌ No | ✅ Sí |
+| Costo en la nube | 1 LB por service ($$) | 1 LB para todos los services (barato ✅) |
+| Manipulación de headers | ❌ No | ✅ Sí |
 
-> 🏭 **Production pattern:** One cloud LoadBalancer → Ingress Controller → many Services
+> 🏭 **Patrón de producción:** Un LoadBalancer en la nube → Controlador Ingress → muchos Services
 
 ---
 
-## Why Traefik?
+## ¿Por qué Traefik?
 
-This workshop uses **Traefik** as the Ingress Controller instead of NGINX Ingress. Here's why:
+Este workshop usa **Traefik** como controlador Ingress en lugar de NGINX Ingress. Estas son las razones:
 
 | | NGINX Ingress | Traefik |
 |--|--|--|
-| Multi-arch (Intel/AMD/Apple Silicon/ARM) | ❌ Separate images per arch, prone to pull errors | ✅ Single multi-arch image, works everywhere |
-| Install complexity | ❌ 3 pods, admission webhooks, long YAML | ✅ One Helm command, one pod |
-| Conference Wi-Fi reliability | ❌ Large image, rate limit issues | ✅ Small image (~50MB), fast pull |
-| Production relevance | ⚠️ Being retired March 2026 | ✅ Actively maintained, recommended replacement |
+| Multi-arquitectura (Intel/AMD/Apple Silicon/ARM) | ❌ Imágenes separadas por arquitectura, propensas a errores de descarga | ✅ Una sola imagen multi-arquitectura, funciona en todas partes |
+| Complejidad de instalación | ❌ 3 pods, admission webhooks, YAML extenso | ✅ Un comando Helm, un pod |
+| Confiabilidad en Wi-Fi de conferencias | ❌ Imagen grande, problemas con límites de descarga | ✅ Imagen pequeña, alrededor de 50 MB, descarga rápida |
+| Relevancia en producción | ⚠️ En proceso de retiro en marzo de 2026 | ✅ Mantenido activamente, reemplazo recomendado |
 
-The Ingress concepts you learn here — rules, hostnames, paths, backends — are **identical** regardless of which controller you use. Switching controllers in a real cluster is just a one-line change (`ingressClassName`).
+Los conceptos de Ingress que aprendes aquí — reglas, hostnames, paths y backends — son **idénticos** sin importar el controlador que uses. Cambiar de controlador en un clúster real normalmente es solo un cambio de una línea, `ingressClassName`.
 
 ---
 
-## Step 1: Install Helm
+## Paso 1: Instalar Helm
 
-Helm is the Kubernetes package manager. We use it to install Traefik.
+Helm es el gestor de paquetes de Kubernetes. Lo usamos para instalar Traefik.
 
 **macOS:**
 ```bash
 brew install helm
-```
+````
 
 **Linux:**
+
 ```bash
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
 **Windows:**
+
 ```powershell
 winget install Helm.Helm
 ```
-Verify:
+
+Verifica:
+
 ```bash
 helm version
 # version.BuildInfo{Version:"v3.x.x"...}
 ```
 
 **Windows (WSL2):**
+
 ```bash
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
 ---
 
-## Step 2: Pre-Pull Traefik Image Into KIND
+## Paso 2: Predescargar la imagen de Traefik en KIND
 
-Because KIND nodes run inside Docker containers, they can't always reach the internet directly (especially on corporate networks or conference Wi-Fi). Pre-pull on your host and load it in:
+Como los nodos de KIND corren dentro de contenedores Docker, no siempre pueden acceder directamente a internet, especialmente en redes corporativas o con Wi-Fi de conferencias. Descárgala antes en tu host y luego cárgala en KIND:
 
 ```bash
 docker pull traefik:v3.0
 kind load docker-image traefik:v3.0 --name workshop
 ```
 
-Verify it's inside the cluster:
+Verifica que esté dentro del clúster:
+
 ```bash
 docker exec workshop-control-plane crictl images | grep traefik
 ```
 
 ---
 
-## Step 3: Install Traefik
+## Paso 3: Instalar Traefik
 
-We use a values file (`manifests/traefik-values.yaml`) to configure Traefik correctly for KIND. This sets up DaemonSet mode with hostNetwork so traffic flows through KIND's port mappings properly.
+Usamos un archivo de valores, `manifests/traefik-values.yaml`, para configurar Traefik correctamente para KIND. Esto configura el modo DaemonSet con hostNetwork para que el tráfico fluya correctamente a través de los mapeos de puertos de KIND.
 
 ```bash
-# Add the official Traefik Helm chart repository
+# Agregar el repositorio oficial del chart Helm de Traefik
 helm repo add traefik https://traefik.github.io/charts
 helm repo update
 
-# Install Traefik using the pre-configured values file
+# Instalar Traefik usando el archivo de valores preconfigurado
 helm upgrade --install traefik traefik/traefik \
   --namespace traefik \
   --create-namespace \
@@ -128,24 +136,26 @@ helm upgrade --install traefik traefik/traefik \
   --wait
 ```
 
-> 💡 `--wait` blocks until Traefik is fully running. Should complete in under 60 seconds.
+> 💡 `--wait` bloquea hasta que Traefik esté completamente corriendo. Debe completarse en menos de 60 segundos.
 
-Verify it's running:
+Verifica que esté corriendo:
+
 ```bash
 kubectl get pods -n traefik
 ```
 
-Expected output:
-```
+Salida esperada:
+
+```text
 NAME                       READY   STATUS    RESTARTS   AGE
 traefik-xxxxxxxxxx-xxxxx   1/1     Running   0          30s
 ```
 
-One pod. Running. Done. ✅
+Un pod. Corriendo. Listo. ✅
 
 ---
 
-## Step 4: Review the Ingress YAML
+## Paso 4: Revisar el YAML de Ingress
 
 ```bash
 cat manifests/ingress.yaml
@@ -160,9 +170,9 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
-  ingressClassName: traefik    # Which Ingress Controller handles this
+  ingressClassName: traefik    # Qué controlador Ingress manejará esto
   rules:
-    - host: demo.local          # Match requests with this Host header
+    - host: demo.local          # Coincide con solicitudes que tengan este Host header
       http:
         paths:
           - path: /
@@ -174,75 +184,80 @@ spec:
                   number: 80
 ```
 
-### Key Fields
+### Campos clave
 
-| Field | What it does |
-|-------|-------------|
-| `ingressClassName: traefik` | Tells Kubernetes which controller owns this Ingress |
-| `host: demo.local` | Only match requests with `Host: demo.local` header |
-| `path: /` | Match all paths |
-| `pathType: Prefix` | Match `/` and everything below it |
-| `backend.service` | Forward matched traffic to this Service on this port |
+| Campo                       | Qué hace                                                       |
+| --------------------------- | -------------------------------------------------------------- |
+| `ingressClassName: traefik` | Le dice a Kubernetes qué controlador administra este Ingress   |
+| `host: demo.local`          | Solo coincide con solicitudes con el header `Host: demo.local` |
+| `path: /`                   | Coincide con todos los paths                                   |
+| `pathType: Prefix`          | Coincide con `/` y todo lo que está debajo                     |
+| `backend.service`           | Reenvía el tráfico coincidente a este Service en ese puerto    |
 
 ---
 
-## Step 5: Apply the Ingress
+## Paso 5: Aplicar el Ingress
 
 ```bash
 kubectl apply -f manifests/ingress.yaml
 ```
 
-Verify:
+Verifica:
+
 ```bash
 kubectl get ingress -n workshop-app
 ```
 
-Expected output:
-```
+Salida esperada:
+
+```text
 NAME               CLASS     HOSTS        ADDRESS     PORTS   AGE
 demo-app-ingress   traefik   demo.local   localhost   80      15s
 ```
 
 ---
 
-## Step 6: Configure Local DNS
+## Paso 6: Configurar DNS local
 
-`demo.local` is a fake hostname — we need to tell your laptop to resolve it to localhost.
+`demo.local` es un hostname ficticio — necesitamos decirle a tu laptop que lo resuelva hacia localhost.
 
 **macOS / Linux:**
+
 ```bash
 echo '127.0.0.1 demo.local' | sudo tee -a /etc/hosts
 ```
 
-**Windows (PowerShell as Administrator):**
+**Windows (PowerShell como Administrador):**
+
 ```powershell
 Add-Content -Path C:\Windows\System32\drivers\etc\hosts -Value '127.0.0.1 demo.local'
 ```
 
-Verify:
+Verifica:
+
 ```bash
 ping -c 1 demo.local
-# Should show: 127.0.0.1
+# Debe mostrar: 127.0.0.1
 ```
-
 
 **Windows (WSL2):**
-```bash
-# Your browser runs on Windows, not inside WSL2.
-# Edit the Windows hosts file using the PowerShell block above,
-# then open http://demo.local in your normal Windows browser.
-```
 
+```bash
+# Tu navegador corre en Windows, no dentro de WSL2.
+# Edita el archivo hosts de Windows usando el bloque de PowerShell de arriba,
+# luego abre http://demo.local en tu navegador normal de Windows.
+```
 
 ---
 
-## Step 7: Test End-to-End!
+## Paso 7: Prueba de extremo a extremo
 
-Open http://demo.local in your browser. You should see the workshop app! 🎉
+Abre [http://demo.local](http://demo.local) en tu navegador. Deberías ver la app del workshop. 🎉
 
-Refresh several times — watch the **Pod Name** in the hero card change as Traefik load-balances across your two pods.
+Refresca varias veces — observa cómo cambia el **Pod Name** en la tarjeta principal mientras Traefik balancea la carga entre tus dos pods.
 
-You can also test from the terminal:
+También puedes probar desde la terminal:
+
 ```bash
 curl http://demo.local/health
 # {"status":"ok","pod":"demo-app-xxx","uptime":"5m"}
@@ -250,28 +265,28 @@ curl http://demo.local/health
 
 ---
 
-## Understanding the Full Traffic Flow
+## Entendiendo el flujo completo del tráfico
 
 ```
-1. You open: http://demo.local
-2. Browser → /etc/hosts → resolves demo.local to 127.0.0.1
-3. Request hits port 80 on your laptop
-4. KIND extraPortMapping → port 80 inside the cluster
-5. Traefik pod receives the request
-6. Traefik reads the Host: demo.local header
-7. Matches Ingress rule: demo.local / → demo-app-svc:80
-8. Service load-balances to one of the 2 Pods
-9. Pod responds → back through the chain → your browser
+1. Abres: http://demo.local
+2. Navegador → /etc/hosts → resuelve demo.local a 127.0.0.1
+3. La solicitud llega al puerto 80 de tu laptop
+4. KIND extraPortMapping → puerto 80 dentro del clúster
+5. El pod de Traefik recibe la solicitud
+6. Traefik lee el header Host: demo.local
+7. Coincide con la regla de Ingress: demo.local / → demo-app-svc:80
+8. El Service balancea la carga hacia uno de los 2 Pods
+9. El Pod responde → vuelve por toda la cadena → a tu navegador
 ```
 
 ---
 
-## 🧪 Lab: Multi-Service Routing
+## 🧪 Laboratorio: Enrutamiento de múltiples servicios
 
-This is what makes Ingress powerful — one controller, multiple apps. Imagine you had a second service:
+Esto es lo que hace poderoso a Ingress — un solo controlador, múltiples aplicaciones. Imagina que tuvieras un segundo service:
 
 ```yaml
-# Hypothetical second Ingress rule
+# Regla hipotética de un segundo Ingress
 - host: api.local
   http:
     paths:
@@ -284,22 +299,22 @@ This is what makes Ingress powerful — one controller, multiple apps. Imagine y
               number: 80
 ```
 
-Both `demo.local` and `api.local` would go through **the same Traefik pod** and get routed to different Services. In a cloud cluster this means one load balancer ($) instead of one per service ($$$$).
+Tanto `demo.local` como `api.local` pasarían por **el mismo pod de Traefik** y serían dirigidos a distintos Services. En un clúster en la nube esto significa un balanceador de carga en lugar de uno por cada service.
 
 ---
 
-## 🧪 Lab: Traefik Dashboard
+## 🧪 Laboratorio: Dashboard de Traefik
 
-Traefik ships with a built-in dashboard showing all routes, services, and middleware:
+Traefik incluye un dashboard integrado que muestra todas las rutas, services y middleware:
 
 ```bash
 kubectl port-forward -n traefik $(kubectl get pods -n traefik -o name) 9000:9000
 ```
 
-Open http://localhost:9000/dashboard/ — you'll see your `demo.local` route listed!
+Abre [http://localhost:9000/dashboard/](http://localhost:9000/dashboard/) — verás tu ruta `demo.local` listada.
 
-Press `Ctrl+C` when done.
+Presiona `Ctrl+C` cuando termines.
 
 ---
 
-**➡️ Next:** [Module 7 — ConfigMaps & Secrets](../07-configmaps-secrets/README.md)
+**➡️ Siguiente:** [Módulo 7 — ConfigMaps y Secrets](../07-configmaps-secrets/README.md)

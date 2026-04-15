@@ -1,35 +1,37 @@
-# Module 2 — Creating Your KIND Cluster
+# Módulo 2 — Creando tu clúster KIND
 
-> ⏱️ **Time:** 20 minutes | 🎯 **Goal:** Create and verify a local Kubernetes cluster with Ingress support
+> ⏱️ **Tiempo:** 20 minutos | 🎯 **Objetivo:** Crear y verificar un clúster local de Kubernetes con soporte para Ingress
 
 ---
 
-## What is KIND?
+## ¿Qué es KIND?
 
 **KIND = Kubernetes IN Docker**
 
-KIND runs a complete Kubernetes cluster using Docker containers as "nodes". Each Docker container acts like a real server — it runs kubelet, the container runtime, and all the Kubernetes components.
+KIND ejecuta un clúster completo de Kubernetes usando contenedores de Docker como "nodos". Cada contenedor de Docker actúa como si fuera un servidor real — ejecuta kubelet, el runtime de contenedores y todos los componentes de Kubernetes.
 
 ```
-Your Laptop
+
+Tu laptop
 └── Docker
-    └── Docker Container (acts as a K8s Node)
-        ├── kubelet
-        ├── containerd
-        └── Your Pods
-```
+└── Contenedor Docker (actúa como un Nodo de K8s)
+├── kubelet
+├── containerd
+└── Tus Pods
 
-This is perfect for learning — it's free, runs locally, and is **identical** to real Kubernetes.
+````
+
+Esto es perfecto para aprender — es gratis, corre localmente y es **idéntico** a Kubernetes real.
 
 ---
 
-## Step 1: Review the KIND Config
+## Paso 1: Revisar la configuración de KIND
 
-We need a custom config file to enable Ingress (external traffic routing). This file is already in the repo:
+Necesitamos un archivo de configuración personalizado para habilitar Ingress (enrutamiento de tráfico externo). Este archivo ya está en el repositorio:
 
 ```bash
 cat manifests/kind-config.yaml
-```
+````
 
 ```yaml
 # manifests/kind-config.yaml
@@ -52,23 +54,24 @@ nodes:
         protocol: TCP
 ```
 
-### What does this config do?
+### ¿Qué hace esta configuración?
 
-| Setting | Purpose |
-|---------|---------|
-| `role: control-plane` | This node is both control plane AND worker (fine for learning) |
-| `node-labels: ingress-ready=true` | Marks the node so the Ingress controller can be scheduled on it |
-| `extraPortMappings` | Forwards ports 80/443 from your laptop → inside the cluster |
+| Configuración                     | Propósito                                                                           |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| `role: control-plane`             | Este nodo es tanto plano de control como worker, lo cual está bien para aprendizaje |
+| `node-labels: ingress-ready=true` | Marca el nodo para que el controlador de Ingress pueda programarse allí             |
+| `extraPortMappings`               | Redirige los puertos 80/443 de tu laptop → hacia dentro del clúster                 |
 
 ---
 
-## Step 2: Create the Cluster
+## Paso 2: Crear el clúster
 
 ```bash
 kind create cluster --name workshop --config manifests/kind-config.yaml
 ```
 
-Expected output (takes 1-3 minutes):
+Salida esperada (toma de 1 a 3 minutos):
+
 ```
 Creating cluster "workshop" ...
  ✓ Ensuring node image (kindest/node:v1.29.0) 🖼
@@ -83,94 +86,97 @@ Have a nice day! 👋
 
 ---
 
-## Step 3: Verify the Cluster
+## Paso 3: Verificar el clúster
 
 ```bash
-# Confirm kubectl is pointed at your new cluster
+# Confirmar que kubectl apunta a tu nuevo clúster
 kubectl cluster-info --context kind-workshop
 
-# Check nodes
+# Revisar nodos
 kubectl get nodes
 
-# Expected:
+# Esperado:
 # NAME                     STATUS   ROLES           AGE   VERSION
 # workshop-control-plane   Ready    control-plane   2m    v1.29.0
 ```
 
 ---
 
-## Step 4: Explore the Cluster
+## Paso 4: Explorar el clúster
 
 ```bash
-# See all system pods running in the cluster
+# Ver todos los pods del sistema que están corriendo en el clúster
 kubectl get pods --all-namespaces
 
-# Equivalent shorthand
+# Forma abreviada equivalente
 kubectl get pods -A
 
-# What namespaces exist by default?
+# ¿Qué namespaces existen por defecto?
 kubectl get namespaces
 ```
 
-You'll see namespaces like:
-- `kube-system` — Kubernetes system components
-- `kube-public` — Publicly readable data
-- `kube-node-lease` — Node heartbeat data
-- `local-path-storage` — KIND's default storage class
+Vas a ver namespaces como:
+
+* `kube-system` — componentes del sistema de Kubernetes
+* `kube-public` — datos de lectura pública
+* `kube-node-lease` — datos de latido de los nodos
+* `local-path-storage` — clase de almacenamiento por defecto de KIND
 
 ---
 
-## Step 5: Understand kubectl Contexts
+## Paso 5: Entender los contextos de kubectl
 
-A **context** is a saved connection to a cluster. You can have multiple clusters and switch between them.
+Un **contexto** es una conexión guardada a un clúster. Puedes tener varios clústeres y cambiar entre ellos.
 
 ```bash
-# See all contexts
+# Ver todos los contextos
 kubectl config get-contexts
 
-# See current context
+# Ver el contexto actual
 kubectl config current-context
 
-# Switch context (if you had multiple clusters)
+# Cambiar de contexto (si tuvieras varios clústeres)
 kubectl config use-context kind-workshop
 ```
 
 ---
 
-## KIND Cheat Sheet
+## Hoja rápida de KIND
 
 ```bash
-# List all KIND clusters
+# Listar todos los clústeres KIND
 kind get clusters
 
-# Delete the cluster when done
+# Eliminar el clúster al terminar
 kind delete cluster --name workshop
 
-# Load a local Docker image into KIND
-# (needed if you build your own image)
+# Cargar una imagen local de Docker en KIND
+# (necesario si construyes tu propia imagen)
 kind load docker-image my-image:tag --name workshop
 
-# Get cluster logs
+# Obtener logs del clúster
 kind export logs /tmp/kind-logs --name workshop
 ```
 
 ---
 
-## 🧪 Lab: Explore What's Running
+## 🧪 Laboratorio: Explora qué está corriendo
 
-Run these and look at the output:
+Ejecuta estos comandos y mira la salida:
 
 ```bash
-# What pods run the cluster itself?
+# ¿Qué pods ejecutan el clúster en sí?
 kubectl get pods -n kube-system
 
-# What's the API server doing?
-kubectl get componentstatuses 2>/dev/null || echo "Use: kubectl get --raw='/readyz?verbose'"
+# ¿Qué está haciendo el API server?
+kubectl get componentstatuses 2>/dev/null || echo "Usa: kubectl get --raw='/readyz?verbose'"
 
-# What resources can Kubernetes manage?
+# ¿Qué recursos puede administrar Kubernetes?
 kubectl api-resources | head -30
 ```
 
 ---
 
-**➡️ Next:** [Module 3 — Namespaces](../03-namespaces/README.md)
+**➡️ Siguiente:** [Módulo 3 — Namespaces](../03-namespaces/README.md)
+
+

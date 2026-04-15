@@ -1,54 +1,58 @@
-# Module 3 — Namespaces: Organizing Your Cluster
+# Módulo 3 — Namespaces: Organizando tu clúster
 
-> ⏱️ **Time:** 10 minutes | 🎯 **Goal:** Understand and create Namespaces to organize resources
+> ⏱️ **Tiempo:** 10 minutos | 🎯 **Objetivo:** Entender y crear Namespaces para organizar recursos
 
 ---
 
-## What is a Namespace?
+## ¿Qué es un Namespace?
 
-A **Namespace** is a virtual cluster inside your Kubernetes cluster. Think of it like a folder — it groups related resources together and provides isolation.
+Un **Namespace** es un clúster virtual dentro de tu clúster de Kubernetes. Piensa en él como una carpeta — agrupa recursos relacionados y proporciona aislamiento.
 
 ```
+
 cluster
-├── namespace: kube-system     (K8s system components)
-├── namespace: default         (where things go without a namespace)
-├── namespace: workshop-app    ← We'll create this
-└── namespace: monitoring      (e.g., Prometheus, Grafana)
-```
+├── namespace: kube-system     (componentes del sistema de K8s)
+├── namespace: default         (aquí van las cosas si no especificas uno)
+├── namespace: workshop-app    ← Este es el que vamos a crear
+└── namespace: monitoring      (por ejemplo, Prometheus, Grafana)
 
-### Why Use Namespaces?
+````
 
-| Use Case | Example |
+### ¿Por qué usar Namespaces?
+
+| Caso de uso | Ejemplo |
 |----------|---------|
-| **Environment isolation** | `dev`, `staging`, `prod` in one cluster |
-| **Team isolation** | `team-frontend`, `team-backend` |
-| **App isolation** | `monitoring`, `logging`, `workshop-app` |
-| **Resource quotas** | Limit CPU/memory per namespace |
-| **RBAC scoping** | Give a team access to only their namespace |
+| **Aislamiento por entorno** | `dev`, `staging`, `prod` en un mismo clúster |
+| **Aislamiento por equipo** | `team-frontend`, `team-backend` |
+| **Aislamiento por aplicación** | `monitoring`, `logging`, `workshop-app` |
+| **Cuotas de recursos** | Limitar CPU/memoria por namespace |
+| **Alcance de RBAC** | Darle a un equipo acceso solo a su namespace |
 
-> ⚠️ **Namespaces do NOT provide security isolation** by default — just logical separation. Use Network Policies for traffic isolation.
+> ⚠️ **Los Namespaces NO proporcionan aislamiento de seguridad** por defecto — solo separación lógica. Usa Network Policies para aislar tráfico.
 
 ---
 
-## Step 1: Create a Namespace via kubectl
+## Paso 1: Crear un Namespace con kubectl
 
-The fastest way:
+La forma más rápida:
+
 ```bash
 kubectl create namespace workshop-app
-```
+````
 
-Verify it exists:
+Verifica que existe:
+
 ```bash
 kubectl get namespaces
-# or shorthand
+# o forma corta
 kubectl get ns
 ```
 
 ---
 
-## Step 2: Create a Namespace via YAML (the GitOps way)
+## Paso 2: Crear un Namespace con YAML (la forma GitOps)
 
-Using YAML is better for real projects — it's declarative and version-controlled.
+Usar YAML es mejor para proyectos reales — es declarativo y queda versionado.
 
 ```bash
 cat manifests/namespace.yaml
@@ -65,54 +69,55 @@ metadata:
     managed-by: kubectl
 ```
 
-Delete the previously created namespace and apply using the manifest or you will get a "Warning," which is not a big deal:
+Elimina el namespace creado antes y aplícalo usando el manifiesto, o verás un "Warning", aunque no es grave:
+
 ```bash
 kubectl delete namespace workshop-app
 kubectl apply -f manifests/namespace.yaml
 ```
 
-> 💡 `kubectl apply` is idempotent — running it again won't error if the namespace already exists.
+> 💡 `kubectl apply` es idempotente — si lo ejecutas otra vez, no dará error si el namespace ya existe.
 
 ---
 
-## Step 3: Working Within a Namespace
+## Paso 3: Trabajar dentro de un Namespace
 
-Most kubectl commands need `-n <namespace>` to scope to a namespace:
+La mayoría de los comandos de kubectl necesitan `-n <namespace>` para apuntar a un namespace específico:
 
 ```bash
-# List pods in a specific namespace
+# Listar pods en un namespace específico
 kubectl get pods -n workshop-app
 
-# Get ALL resources across ALL namespaces
+# Obtener TODOS los recursos en TODOS los namespaces
 kubectl get pods --all-namespaces
-kubectl get pods -A   # shorthand
+kubectl get pods -A   # forma corta
 
-# Set a default namespace for your session (optional)
+# Definir un namespace por defecto para tu sesión (opcional)
 kubectl config set-context --current --namespace=workshop-app
-# Now you don't need -n workshop-app on every command
-# Reset with:
+# Ahora no necesitas -n workshop-app en cada comando
+# Restablecer con:
 kubectl config set-context --current --namespace=default
 ```
 
 ---
 
-## Understanding the `default` Namespace
+## Entendiendo el Namespace `default`
 
-If you don't specify a namespace, commands go to `default`:
+Si no especificas un namespace, los comandos van a `default`:
 
 ```bash
-# These are equivalent when current namespace is 'default'
+# Estos son equivalentes cuando el namespace actual es 'default'
 kubectl get pods
 kubectl get pods -n default
 ```
 
-> 🏭 **Best practice:** Never deploy your apps to `default` in production. Always use named namespaces.
+> 🏭 **Buena práctica:** Nunca despliegues tus apps en `default` en producción. Usa siempre namespaces con nombre.
 
 ---
 
-## Namespace Resource Quotas (Preview)
+## Cuotas de recursos por Namespace (vista previa)
 
-You can limit resources per namespace. We won't apply this today, but here's what it looks like:
+Puedes limitar recursos por namespace. No lo aplicaremos hoy, pero así se ve:
 
 ```yaml
 apiVersion: v1
@@ -131,19 +136,18 @@ spec:
 
 ---
 
-## 🧪 Lab Exercises
+## 🧪 Ejercicios de laboratorio
 
 ```bash
-# 1. List all namespaces and notice the age/status
+# 1. Lista todos los namespaces y fíjate en la edad/estado
 kubectl get namespaces
 
-# 2. Describe the workshop-app namespace
+# 2. Describe el namespace workshop-app
 kubectl describe namespace workshop-app
 
-# 3. Try getting pods in workshop-app (should be empty)
+# 3. Intenta ver los pods en workshop-app (debe estar vacío)
 kubectl get all -n workshop-app
 ```
 
----
 
-**➡️ Next:** [Module 4 — Deployments](../04-deployments/README.md)
+**➡️ Siguiente:** [Módulo 4 — Deployments](../04-deployments/README.md)

@@ -1,33 +1,33 @@
-# Module 7 — ConfigMaps & Secrets
+# Módulo 7 — ConfigMaps y Secrets
 
-> ⏱️ **Time:** 20 minutes | 🎯 **Goal:** Externalize configuration and inject it into your app as env vars and mounted files
+> ⏱️ **Tiempo:** 20 minutos | 🎯 **Objetivo:** Externalizar la configuración e inyectarla en tu app como variables de entorno y archivos montados
 
 ---
 
-## 🧹 Clean Up First (Reset to a Known Good State)
+## 🧹 Limpieza inicial, restablecer a un estado conocido y correcto
 
-If you attempted this module before, run these commands to wipe everything and start fresh.
-If this is your first time through, skip to [The Concepts](#the-concepts) below.
+Si ya intentaste este módulo antes, ejecuta estos comandos para borrar todo y empezar desde cero.  
+Si es tu primera vez, salta a [Los conceptos](#los-conceptos).
 
 ```bash
-# Remove the updated deployment
+# Eliminar el deployment actualizado
 kubectl delete deployment demo-app -n workshop-app --ignore-not-found
 
-# Remove ConfigMap and Secret
+# Eliminar ConfigMap y Secret
 kubectl delete configmap demo-app-config -n workshop-app --ignore-not-found
 kubectl delete secret demo-app-secret -n workshop-app --ignore-not-found
 
-# Remove any quick lab ConfigMaps you may have created
+# Eliminar cualquier ConfigMap rápido del laboratorio que hayas creado
 kubectl delete configmap my-quick-config -n workshop-app --ignore-not-found
 kubectl delete configmap file-config -n workshop-app --ignore-not-found
 
-# Confirm the namespace is clean — only the Service and Ingress should remain
+# Confirmar que el namespace está limpio, solo deben quedar el Service y el Ingress
 kubectl get all -n workshop-app
 kubectl get configmaps -n workshop-app
 kubectl get secrets -n workshop-app
-```
+````
 
-Now restore the baseline deployment (pods running, no ConfigMap/Secret yet):
+Ahora restaura el deployment base, pods corriendo, todavía sin ConfigMap ni Secret:
 
 ```bash
 kubectl apply -f manifests/deployment.yaml
@@ -38,42 +38,42 @@ kubectl get pods -n workshop-app
 # → 2 pods Running
 ```
 
-You're at a clean starting point. Continue below.
+Ya estás en un punto de partida limpio. Continúa abajo.
 
 ---
 
-## The Concepts
+## Los conceptos
 
-### Why ConfigMaps and Secrets?
+### ¿Por qué ConfigMaps y Secrets?
 
-A core principle of cloud-native apps (12-Factor App): **separate config from code**.
+Un principio central de las aplicaciones cloud-native, el enfoque de las 12 Factor Apps, es **separar la configuración del código**.
 
-| ❌ Bad | ✅ Good |
-|--------|---------|
-| Hardcode `DB_URL`, API keys, feature flags in the Docker image | Inject them at runtime — same image, different config per environment |
-| Rebuild and redeploy the app to change a log level | `kubectl apply` a ConfigMap update |
+| ❌ Malo                                                                | ✅ Bueno                                                                              |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Dejar `DB_URL`, API keys o feature flags dentro de la imagen Docker   | Inyectarlos en tiempo de ejecución, misma imagen, distinta configuración por entorno |
+| Reconstruir y volver a desplegar la app para cambiar el nivel de logs | Actualizar un ConfigMap con `kubectl apply`                                          |
 
-Kubernetes provides two objects for this:
+Kubernetes ofrece dos objetos para esto:
 
-| Object | For | Stored As |
-|--------|-----|-----------|
-| **ConfigMap** | Non-sensitive config (URLs, feature flags, tuning params) | Plaintext |
-| **Secret** | Sensitive data (passwords, API keys, certs) | Base64 encoded |
+| Objeto        | Para qué sirve                                                       | Cómo se almacena     |
+| ------------- | -------------------------------------------------------------------- | -------------------- |
+| **ConfigMap** | Configuración no sensible, URLs, feature flags, parámetros de ajuste | Texto plano          |
+| **Secret**    | Datos sensibles, contraseñas, API keys, certificados                 | Codificado en Base64 |
 
-> ⚠️ Secrets are base64 **encoded**, not encrypted by default. For production use Sealed Secrets, External Secrets Operator, or HashiCorp Vault.
+> ⚠️ Los Secrets están **codificados** en Base64, no cifrados por defecto. En producción conviene usar Sealed Secrets, External Secrets Operator o HashiCorp Vault.
 
-### Two Ways to Consume Them in a Pod
+### Dos formas de consumirlos dentro de un Pod
 
-| Method | How | Updates without restart? |
-|--------|-----|--------------------------|
-| **Environment variable** | `configMapKeyRef` / `secretKeyRef` in `env:` | ❌ No — must rollout restart |
-| **Volume mount** | `volumes:` + `volumeMounts:` | ✅ Yes — within ~60 seconds |
+| Método                   | Cómo                                                | ¿Se actualiza sin reiniciar?              |
+| ------------------------ | --------------------------------------------------- | ----------------------------------------- |
+| **Variable de entorno**  | `configMapKeyRef` o `secretKeyRef` dentro de `env:` | ❌ No, requiere rollout restart            |
+| **Montaje como volumen** | `volumes:` + `volumeMounts:`                        | ✅ Sí, en unos 60 segundos aproximadamente |
 
-This module uses **both** methods so you can see the difference.
+Este módulo usa **ambos métodos** para que puedas ver la diferencia.
 
 ---
 
-## Step 1 — Review and Apply the ConfigMap
+## Paso 1 — Revisar y aplicar el ConfigMap
 
 ```bash
 cat manifests/configmap.yaml
@@ -86,14 +86,14 @@ metadata:
   name: demo-app-config
   namespace: workshop-app
 data:
-  # Simple key-value pairs — injected as env vars
+  # Pares clave-valor simples, se inyectan como variables de entorno
   APP_ENV: "workshop"
   APP_VERSION: "1.0.0"
   LOG_LEVEL: "info"
   MAX_CONNECTIONS: "100"
   FEATURE_NEW_UI: "false"
 
-  # Multi-line values — each becomes a file under /etc/config/
+  # Valores multilínea, cada uno se convierte en un archivo bajo /etc/config/
   app.properties: |
     environment=workshop
     app.version=1.0.0
@@ -109,7 +109,7 @@ data:
     }
 ```
 
-Apply it:
+Aplícalo:
 
 ```bash
 kubectl apply -f manifests/configmap.yaml
@@ -118,11 +118,11 @@ kubectl get configmaps -n workshop-app
 kubectl describe configmap demo-app-config -n workshop-app
 ```
 
-> 💡 Applying the ConfigMap alone does **nothing** to your running pods. The pods don't know it exists yet — that happens in Step 3.
+> 💡 Aplicar el ConfigMap por sí solo **no hace nada** sobre tus pods en ejecución. Los pods todavía no saben que existe. Eso ocurre en el Paso 3.
 
 ---
 
-## Step 2 — Review and Apply the Secret
+## Paso 2 — Revisar y aplicar el Secret
 
 ```bash
 cat manifests/secret.yaml
@@ -141,81 +141,82 @@ stringData:
   connection-string: "postgresql://appuser:super-secret-workshop-password@db:5432/workshopdb"
 ```
 
-> 💡 `stringData` lets you write plain strings — Kubernetes base64-encodes them automatically. Use `data:` if you want to supply pre-encoded values yourself.
+> 💡 `stringData` te deja escribir cadenas normales y Kubernetes las codifica automáticamente en Base64. Usa `data:` solo si quieres pasar los valores ya codificados.
 
-Apply it:
+Aplícalo:
 
 ```bash
 kubectl apply -f manifests/secret.yaml
 
-# Values are hidden in describe output — this is intentional
+# Los valores quedan ocultos en la salida de describe, esto es intencional
 kubectl get secrets -n workshop-app
 kubectl describe secret demo-app-secret -n workshop-app
 
-# Manually decode a value (for learning only)
+# Decodificar manualmente un valor, solo para aprendizaje
 kubectl get secret demo-app-secret -n workshop-app \
   -o jsonpath='{.data.DB_PASSWORD}' | base64 -d
 echo ""
 ```
 
-> 💡 Applying the Secret alone also does **nothing** to your running pods.
+> 💡 Aplicar el Secret por sí solo tampoco hace nada en los pods que ya están corriendo.
 
 ---
 
-## Step 3 — Apply the Updated Deployment
+## Paso 3 — Aplicar el Deployment actualizado
 
-> ⚠️ **This is the step most people miss.**
+> ⚠️ **Este es el paso que más gente olvida.**
 >
-> The ConfigMap and Secret now exist in the cluster, but your pods are still using `deployment.yaml`
-> which has hardcoded `env:` values and **no volume mounts at all**. You must apply
-> `deployment-with-config.yaml` to wire everything up. This triggers a rolling update that
-> replaces the old pods with new ones that reference the ConfigMap and Secret.
+> El ConfigMap y el Secret ya existen en el clúster, pero tus pods siguen usando `deployment.yaml`,
+> que tiene valores `env:` fijos y **no tiene montajes de volumen**. Debes aplicar
+> `deployment-with-config.yaml` para conectar todo. Esto dispara una actualización gradual
+> que reemplaza los pods viejos por pods nuevos que ya referencian el ConfigMap y el Secret.
 
-Review what's changing:
+Revisa qué cambia:
 
 ```bash
 diff manifests/deployment.yaml manifests/deployment-with-config.yaml
 ```
 
-The key differences in `deployment-with-config.yaml`:
-- `env:` entries now use `configMapKeyRef` and `secretKeyRef` instead of hardcoded `value:`
-- A `volumeMounts:` block adds `/etc/config` and `/etc/secrets` inside the container
-- A `volumes:` block at the pod level wires the ConfigMap and Secret to those mounts
+Las diferencias clave en `deployment-with-config.yaml`:
 
-Apply it:
+* Las entradas de `env:` ahora usan `configMapKeyRef` y `secretKeyRef` en lugar de `value:`
+* Un bloque `volumeMounts:` agrega `/etc/config` y `/etc/secrets` dentro del contenedor
+* Un bloque `volumes:` a nivel del pod conecta el ConfigMap y el Secret a esos montajes
+
+Aplícalo:
 
 ```bash
 kubectl apply -f manifests/deployment-with-config.yaml
 
-# Wait for the rolling update to finish before testing — do not skip this
+# Espera a que termine la actualización gradual antes de probar, no te saltes esto
 kubectl rollout status deployment/demo-app -n workshop-app
 # → Waiting for deployment "demo-app" rollout to finish: 1 out of 2 new replicas have been updated...
 # → deployment "demo-app" successfully rolled out
 
-# Confirm the change-cause annotation updated
+# Confirmar que cambió la anotación change-cause
 kubectl rollout history deployment/demo-app -n workshop-app
 # REVISION  CHANGE-CAUSE
 # 1         Initial deployment — workshop demo app v1.0.0
 # 2         Module 7 — Added ConfigMap and Secret injection
 
-# Get fresh pod names — the old pods have been replaced
+# Obtener nombres nuevos de pods, los viejos ya fueron reemplazados
 kubectl get pods -n workshop-app
 ```
 
 ---
 
-## Step 4 — Verify Environment Variables
+## Paso 4 — Verificar variables de entorno
 
-Use a pod name from the `kubectl get pods` output above:
+Usa uno de los nombres de pod que te devolvió `kubectl get pods`:
 
 ```bash
 kubectl exec -it <pod-name> -n workshop-app -- \
   env | grep -E "APP_ENV|APP_VERSION|LOG_LEVEL|FEATURE_NEW_UI|DB_PASSWORD|API_KEY"
 ```
 
-Expected output:
+Salida esperada:
 
-```
+```text
 APP_ENV=workshop
 APP_VERSION=1.0.0
 LOG_LEVEL=info
@@ -224,19 +225,19 @@ DB_PASSWORD=super-secret-workshop-password
 API_KEY=workshop-api-key-12345
 ```
 
-All six values present — the first four come from the ConfigMap, the last two from the Secret.
+Los primeros cuatro valores vienen del ConfigMap, y los dos últimos del Secret.
 
 ---
 
-## Step 5 — Verify Mounted Files
+## Paso 5 — Verificar archivos montados
 
 ```bash
 kubectl exec -it <pod-name> -n workshop-app -- ls /etc/config
 ```
 
-Expected output:
+Salida esperada:
 
-```
+```text
 APP_ENV
 APP_VERSION
 FEATURE_NEW_UI
@@ -246,49 +247,49 @@ app.properties
 feature-flags.json
 ```
 
-> 💡 Every key in a ConfigMap becomes a file when mounted as a volume. The filename is the key, the content is the value.
+> 💡 Cada clave de un ConfigMap se convierte en un archivo cuando se monta como volumen. El nombre del archivo es la clave y el contenido es el valor.
 
 ```bash
-# Read the properties file
+# Leer el archivo de propiedades
 kubectl exec -it <pod-name> -n workshop-app -- cat /etc/config/app.properties
 
-# Read the JSON feature flags
+# Leer el JSON de feature flags
 kubectl exec -it <pod-name> -n workshop-app -- cat /etc/config/feature-flags.json
 
-# Check the secrets mount
+# Revisar el montaje de secrets
 kubectl exec -it <pod-name> -n workshop-app -- ls /etc/secrets
 kubectl exec -it <pod-name> -n workshop-app -- cat /etc/secrets/DB_PASSWORD
 ```
 
 ---
 
-## Step 6 — Live ConfigMap Update (Volume Mount Auto-Refresh)
+## Paso 6 — Actualización en vivo del ConfigMap, auto-refresh del volumen
 
-ConfigMaps mounted as **volumes** update automatically inside running pods within ~60 seconds, with no restart required.
+Los ConfigMaps montados como **volúmenes** se actualizan automáticamente dentro de los pods en ejecución en unos 60 segundos, sin reiniciar.
 
 ```bash
-# Edit the ConfigMap — change LOG_LEVEL from "info" to "debug"
+# Editar el ConfigMap, cambia LOG_LEVEL de "info" a "debug"
 kubectl edit configmap demo-app-config -n workshop-app
-# Find: LOG_LEVEL: "info"
-# Change to: LOG_LEVEL: "debug"
-# Save and exit (:wq in vim)
+# Busca: LOG_LEVEL: "info"
+# Cámbialo por: LOG_LEVEL: "debug"
+# Guarda y sal
 
-# Wait ~60 seconds, then check the mounted file
+# Espera unos 60 segundos y revisa el archivo montado
 kubectl exec -it <pod-name> -n workshop-app -- cat /etc/config/LOG_LEVEL
-# → debug  (updated automatically)
+# → debug  (actualizado automáticamente)
 
-# The env var has NOT changed — it's baked in at pod start time
+# La variable de entorno NO cambió, quedó fijada al iniciar el pod
 kubectl exec -it <pod-name> -n workshop-app -- env | grep LOG_LEVEL
-# → LOG_LEVEL=info   (still the old value)
+# → LOG_LEVEL=info   (todavía con el valor anterior)
 
-# To pick up env var changes you need a rollout restart
+# Para actualizar variables de entorno necesitas un rollout restart
 kubectl rollout restart deployment/demo-app -n workshop-app
 kubectl rollout status deployment/demo-app -n workshop-app
 
 kubectl exec -it <new-pod-name> -n workshop-app -- env | grep LOG_LEVEL
-# → LOG_LEVEL=debug  (now updated)
+# → LOG_LEVEL=debug  (ahora sí actualizado)
 
-# Reset back to "info" so Module 8 starts cleanly
+# Restablecer a "info" para que el Módulo 8 empiece limpio
 kubectl patch configmap demo-app-config -n workshop-app \
   --type merge -p '{"data":{"LOG_LEVEL":"info"}}'
 kubectl rollout restart deployment/demo-app -n workshop-app
@@ -297,10 +298,10 @@ kubectl rollout status deployment/demo-app -n workshop-app
 
 ---
 
-## 🧪 Lab Exercises
+## 🧪 Ejercicios de laboratorio
 
 ```bash
-# 1. Create a ConfigMap from literal values on the command line
+# 1. Crear un ConfigMap desde valores literales en línea
 kubectl create configmap my-quick-config \
   --from-literal=COLOR=blue \
   --from-literal=FONT_SIZE=16 \
@@ -308,7 +309,7 @@ kubectl create configmap my-quick-config \
 
 kubectl get cm my-quick-config -n workshop-app -o yaml
 
-# 2. Create a ConfigMap from a local file
+# 2. Crear un ConfigMap desde un archivo local
 echo "my workshop config content" > /tmp/my-config.txt
 kubectl create configmap file-config \
   --from-file=/tmp/my-config.txt \
@@ -316,87 +317,88 @@ kubectl create configmap file-config \
 
 kubectl describe configmap file-config -n workshop-app
 
-# 3. Decode all secret values at once
+# 3. Decodificar todos los valores del Secret de una sola vez
 kubectl get secret demo-app-secret -n workshop-app \
   -o jsonpath='{range .data.*}{@}{"\n"}{end}' | while read val; do
     echo "$val" | base64 -d; echo ""
   done
 
-# 4. See the envFrom alternative (inject all ConfigMap keys at once)
+# 4. Ver la alternativa envFrom, inyectar todas las claves del ConfigMap de una sola vez
 kubectl explain pod.spec.containers.envFrom
 ```
 
 ---
 
-## 🔍 Troubleshooting
+## 🔍 Solución de problemas
 
 **`ls: /etc/config: No such file or directory`**
 
-You exec-ed into a pod from the old deployment that has no volume mounts. Confirm:
+Entraste a un pod del deployment viejo, el que no tiene montajes de volumen. Confirma esto:
 
 ```bash
 kubectl describe deployment demo-app -n workshop-app | grep change-cause
-# Should show: Module 7 — Added ConfigMap and Secret injection
-# If it shows: Initial deployment — Step 3 was never completed
+# Debe mostrar: Module 7 — Added ConfigMap and Secret injection
+# Si muestra: Initial deployment, entonces el Paso 3 nunca se completó
 ```
 
-Fix:
+Solución:
 
 ```bash
 kubectl apply -f manifests/deployment-with-config.yaml
 kubectl rollout status deployment/demo-app -n workshop-app
-kubectl get pods -n workshop-app   # get fresh pod names, then retry
+kubectl get pods -n workshop-app   # obtén nombres nuevos y vuelve a probar
 ```
 
 ---
 
-**`APP_ENV=workshop` shows but `DB_PASSWORD` is missing**
+**`APP_ENV=workshop` aparece pero `DB_PASSWORD` no**
 
-Same root cause — pods are still from the old deployment with hardcoded values, or the Secret was never applied.
+La causa suele ser la misma. Los pods todavía vienen del deployment viejo con valores fijos o el Secret nunca fue aplicado.
 
 ```bash
-kubectl get secret demo-app-secret -n workshop-app   # confirm it exists
+kubectl get secret demo-app-secret -n workshop-app   # confirma que existe
 
-# If missing:
+# Si no existe:
 kubectl apply -f manifests/secret.yaml
 
-# Re-apply the deployment and wait
+# Vuelve a aplicar el deployment y espera
 kubectl apply -f manifests/deployment-with-config.yaml
 kubectl rollout status deployment/demo-app -n workshop-app
 ```
 
 ---
 
-**Pod stuck in `CreateContainerConfigError`**
+**El pod se queda en `CreateContainerConfigError`**
 
-The ConfigMap or Secret referenced by the deployment doesn't exist yet. Apply them first, and the pending pod recovers automatically:
+El ConfigMap o el Secret referenciado en el deployment todavía no existe. Aplícalos primero y el pod pendiente debería recuperarse automáticamente:
 
 ```bash
 kubectl apply -f manifests/configmap.yaml
 kubectl apply -f manifests/secret.yaml
 
-# Pod should self-heal within a few seconds
+# El pod debería autorepararse en pocos segundos
 kubectl get pods -n workshop-app -w
 ```
 
 ---
 
-## Summary
+## Resumen
 
-The correct apply order for this module is always:
+El orden correcto para aplicar este módulo siempre es:
 
-```
+```text
 configmap.yaml  →  secret.yaml  →  deployment-with-config.yaml
 ```
 
-| Resource | What applying it does |
-|----------|-----------------------|
-| `configmap.yaml` | Creates the ConfigMap object — pods don't see it yet |
-| `secret.yaml` | Creates the Secret object — pods don't see it yet |
-| `deployment-with-config.yaml` | **Wires it all up** — rolling restart creates new pods that reference both objects as env vars and volume mounts |
+| Recurso                       | Qué hace al aplicarlo                                                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `configmap.yaml`              | Crea el objeto ConfigMap, los pods todavía no lo usan                                                                                       |
+| `secret.yaml`                 | Crea el objeto Secret, los pods todavía no lo usan                                                                                          |
+| `deployment-with-config.yaml` | **Conecta todo** y dispara un rolling restart para crear nuevos pods que ya referencian ambos objetos como variables de entorno y volúmenes |
 
-**The golden rule: ConfigMaps and Secrets are inert until a pod spec explicitly references them.**
+**La regla de oro: ConfigMaps y Secrets no hacen nada hasta que una especificación de Pod los referencia explícitamente.**
 
 ---
 
-**➡️ Next:** [Module 8 — Scaling & Rolling Updates](../08-scaling-updates/README.md)
+**➡️ Siguiente:** [Módulo 8 — Escalado y actualizaciones graduales](../08-scaling-updates/README.md)
+

@@ -1,83 +1,86 @@
-# Module 1 — Containers & Kubernetes Concepts
+# Módulo 1 — Conceptos de Contenedores y Kubernetes
 
-> ⏱️ **Time:** 20 minutes | 🎯 **Goal:** Understand WHY Kubernetes exists and the key building blocks
-
----
-
-## The Problem: "It Works on My Machine"
-
-Before containers, deploying software was painful:
-- "Works on dev, broken in prod" — because environments differed
-- Dependency conflicts between apps on the same server
-- Hard to scale — you'd provision a whole new VM for more capacity
-- Slow deployments — spinning up VMs takes minutes to hours
+> ⏱️ **Tiempo:** 20 minutos | 🎯 **Objetivo:** Entender POR QUÉ existe Kubernetes y cuáles son sus bloques fundamentales
 
 ---
 
-## Containers: Ship the Environment, Not Just the Code
+## El problema: "Funciona en mi máquina"
 
-A **container** packages your app **and** all its dependencies (libraries, runtime, config) into a single portable image.
+Antes de los contenedores, desplegar software era doloroso:
+- "Funciona en desarrollo, pero falla en producción" — porque los entornos eran diferentes
+- Conflictos de dependencias entre aplicaciones en el mismo servidor
+- Difícil de escalar — había que aprovisionar una VM completa nueva para obtener más capacidad
+- Despliegues lentos — levantar VMs toma de minutos a horas
+
+---
+
+## Contenedores: llevar el entorno, no solo el código
+
+Un **contenedor** empaqueta tu aplicación **y** todas sus dependencias (librerías, runtime, configuración) en una sola imagen portátil.
 
 ```
+
 ┌─────────────────────────────────────────────┐
-│                  Container                   │
+│                 Contenedor                  │
 │  ┌──────────┐  ┌──────────┐  ┌───────────┐  │
-│  │  Your    │  │ Runtime  │  │   Libs &  │  │
-│  │   App    │  │ (Node/   │  │   Deps    │  │
-│  │          │  │  Python) │  │           │  │
+│  │   Tu     │  │ Runtime  │  │  Librerías│  │
+│  │   app    │  │ (Node/   │  │     y     │  │
+│  │          │  │ Python)  │  │ deps      │  │
 │  └──────────┘  └──────────┘  └───────────┘  │
 └─────────────────────────────────────────────┘
-         Runs identically anywhere Docker runs
+Se ejecuta igual en cualquier lugar donde corra Docker
+
 ```
 
-### Container vs Virtual Machine
+### Contenedor vs máquina virtual
 
-| | Container 🐳 | Virtual Machine 🖥️ |
+| | Contenedor 🐳 | Máquina virtual 🖥️ |
 |--|---|---|
-| Starts in | Milliseconds | Minutes |
-| Size | Megabytes | Gigabytes |
-| OS | Shares host kernel | Full guest OS |
-| Isolation | Process-level | Hardware-level |
-| Best for | Microservices | Legacy monoliths |
+| Inicia en | Milisegundos | Minutos |
+| Tamaño | Megabytes | Gigabytes |
+| SO | Comparte el kernel del host | SO invitado completo |
+| Aislamiento | A nivel de proceso | A nivel de hardware |
+| Ideal para | Microservicios | Monolitos heredados |
 
 ---
 
-## Why Kubernetes? The Problem with "Just Containers"
+## ¿Por qué Kubernetes? El problema de "solo contenedores"
 
-Containers are great — but in production you have dozens or hundreds of them:
+Los contenedores son geniales — pero en producción tienes decenas o cientos de ellos:
 
-- **Who restarts a crashed container?**
-- **How do you update 50 containers with zero downtime?**
-- **How do you route traffic to healthy containers only?**
-- **How do you scale up when traffic spikes?**
+- **¿Quién reinicia un contenedor que se cayó?**
+- **¿Cómo actualizas 50 contenedores sin tiempo de inactividad?**
+- **¿Cómo enrutas tráfico solo a contenedores saludables?**
+- **¿Cómo escalas cuando aumenta el tráfico?**
 
-**Kubernetes (K8s)** is a container **orchestrator** — it manages containers at scale across a cluster of machines.
+**Kubernetes (K8s)** es un **orquestador** de contenedores — administra contenedores a escala a través de un clúster de máquinas.
 
-> 🔑 **Key insight:** You tell Kubernetes *what you want* (desired state), and Kubernetes makes it happen and keeps it that way. This is called **reconciliation**.
+> 🔑 **Idea clave:** Tú le dices a Kubernetes *qué quieres* (estado deseado), y Kubernetes lo hace realidad y lo mantiene así. A esto se le llama **reconciliación**.
 
 ---
 
-## Kubernetes Architecture
+## Arquitectura de Kubernetes
 
 ```
+
 ┌─────────────────────────────────────────────────────────┐
-│                     CONTROL PLANE                        │
-│                                                          │
+│                   PLANO DE CONTROL                      │
+│                                                         │
 │  ┌───────────┐  ┌──────┐  ┌─────────────────────────┐  │
-│  │ API Server│  │ etcd │  │ Controller Manager       │  │
-│  │ (front    │  │(state│  │ (watches & reconciles)   │  │
-│  │  door)    │  │ db)  │  │                          │  │
+│  │API Server │  │ etcd │  │ Controller Manager      │  │
+│  │(puerta de │  │(base │  │ (observa y reconcilia)  │  │
+│  │ entrada)  │  │estado)│ │                         │  │
 │  └───────────┘  └──────┘  └─────────────────────────┘  │
-│       │                ┌────────────┐                    │
-│       │                │  Scheduler │                    │
-│       │                │ (places    │                    │
-│       │                │  pods)     │                    │
-│       │                └────────────┘                    │
-└───────┼─────────────────────────────────────────────────┘
-        │ kubectl commands go here
-        ▼
+│       │                ┌────────────┐                   │
+│       │                │ Scheduler  │                   │
+│       │                │ (ubica     │                   │
+│       │                │  pods)     │                   │
+│       │                └────────────┘                   │
+└───────┼────────────────────────────────────────────────┘
+│ aquí llegan los comandos kubectl
+▼
 ┌───────────────────┐    ┌───────────────────┐
-│    WORKER NODE 1  │    │    WORKER NODE 2  │
+│  NODO WORKER 1    │    │  NODO WORKER 2    │
 │                   │    │                   │
 │  ┌─────────────┐  │    │  ┌─────────────┐  │
 │  │   kubelet   │  │    │  │   kubelet   │  │
@@ -89,84 +92,89 @@ Containers are great — but in production you have dozens or hundreds of them:
 │  │Pod │  │Pod │   │    │  │Pod │  │Pod │   │
 │  └────┘  └────┘   │    │  └────┘  └────┘   │
 └───────────────────┘    └───────────────────┘
+
 ```
 
-### Control Plane Components
+### Componentes del plano de control
 
-| Component | Role |
+| Componente | Función |
 |-----------|------|
-| **API Server** | The front door — all `kubectl` commands talk to this |
-| **etcd** | The cluster's memory — stores all state as key-value pairs |
-| **Scheduler** | Decides which Node gets each new Pod |
-| **Controller Manager** | Watches state, takes corrective action (runs Deployment controller, etc.) |
+| **API Server** | La puerta de entrada — todos los comandos `kubectl` hablan con este |
+| **etcd** | La memoria del clúster — almacena todo el estado como pares clave-valor |
+| **Scheduler** | Decide qué Nodo recibe cada nuevo Pod |
+| **Controller Manager** | Observa el estado y toma acciones correctivas (ejecuta el controlador de Deployment, etc.) |
 
-### Node Components
+### Componentes del nodo
 
-| Component | Role |
+| Componente | Función |
 |-----------|------|
-| **kubelet** | Agent on each Node — runs Pods, reports health back to control plane |
-| **kube-proxy** | Manages network rules to route traffic to the right Pod |
-| **Container Runtime** | Actually runs containers (containerd, CRI-O) |
+| **kubelet** | Agente en cada Nodo — ejecuta Pods y reporta su salud al plano de control |
+| **kube-proxy** | Administra reglas de red para enrutar tráfico al Pod correcto |
+| **Container Runtime** | Ejecuta realmente los contenedores (containerd, CRI-O) |
 
 ---
 
-## Core Kubernetes Objects
+## Objetos principales de Kubernetes
 
-Think of these as building blocks. We'll create each one in the workshop:
+Piensa en estos como bloques de construcción. Vamos a crear cada uno durante el workshop:
 
 ```
-Ingress        ← HTTP routing from outside the cluster
-    │
-    ▼
-Service        ← Stable internal address + load balancer for Pods
-    │
-    ▼
-Deployment     ← "Always run N copies of this Pod"
-    │
-    ▼
-Pod            ← One or more containers running together
-    │
-    ▼
-Container      ← Your actual app (Docker image)
+
+Ingress        ← Enrutamiento HTTP desde fuera del clúster
+│
+▼
+Service        ← Dirección interna estable + balanceador de carga para Pods
+│
+▼
+Deployment     ← "Ejecuta siempre N copias de este Pod"
+│
+▼
+Pod            ← Uno o más contenedores ejecutándose juntos
+│
+▼
+Container      ← Tu aplicación real (imagen Docker)
+
 ```
 
-| Object | Analogy | What it does |
+| Objeto | Analogía | Qué hace |
 |--------|---------|-------------|
-| **Pod** | A running process | The smallest unit — one or more containers sharing network/storage |
-| **Deployment** | A job posting | "Always keep 3 copies of this Pod running" |
-| **Service** | A phone number | Stable endpoint for a set of Pods (they come and go, the number stays) |
-| **Ingress** | A receptionist | Routes incoming HTTP requests to the right Service |
-| **ConfigMap** | A config file | Non-secret configuration data injected into Pods |
-| **Secret** | A locked config file | Sensitive data (passwords, tokens) injected into Pods |
-| **Namespace** | A folder | Virtual cluster — isolates resources by team/environment |
+| **Pod** | Un proceso en ejecución | La unidad más pequeña — uno o más contenedores que comparten red/almacenamiento |
+| **Deployment** | Una oferta de trabajo | "Mantén siempre 3 copias de este Pod ejecutándose" |
+| **Service** | Un número de teléfono | Endpoint estable para un conjunto de Pods (ellos vienen y van, el número permanece) |
+| **Ingress** | Una recepcionista | Enruta solicitudes HTTP entrantes al Service correcto |
+| **ConfigMap** | Un archivo de configuración | Datos de configuración no secretos inyectados en Pods |
+| **Secret** | Un archivo de configuración bajo llave | Datos sensibles (contraseñas, tokens) inyectados en Pods |
+| **Namespace** | Una carpeta | Clúster virtual — aísla recursos por equipo/entorno |
 
 ---
 
-## The Kubernetes Workflow
+## El flujo de trabajo de Kubernetes
 
 ```
-Developer writes YAML → kubectl apply → API Server → etcd (stores desired state)
-                                                           │
-                                              Controller watches etcd
-                                                           │
-                                              Scheduler picks a Node
-                                                           │
-                                              kubelet runs the Pod
-                                                           │
-                                              kubelet reports status back
+
+El desarrollador escribe YAML → kubectl apply → API Server → etcd (almacena el estado deseado)
+│
+El controlador observa etcd
+│
+El Scheduler elige un Nodo
+│
+kubelet ejecuta el Pod
+│
+kubelet reporta el estado de vuelta
+
 ```
 
 ---
 
-## 💡 Key Mental Model: Desired vs. Actual State
+## 💡 Modelo mental clave: estado deseado vs estado real
 
-Kubernetes continuously asks: **"Is actual state == desired state?"**
+Kubernetes pregunta continuamente: **"¿El estado real es igual al estado deseado?"**
 
-- You say: "I want 3 replicas"
-- One Pod crashes → actual state = 2
-- Controller notices → starts a new Pod → actual state = 3 ✅
-- This loop runs **constantly**. This is **self-healing**.
+- Tú dices: "Quiero 3 réplicas"
+- Un Pod falla → estado real = 2
+- El controlador lo detecta → inicia un nuevo Pod → estado real = 3 ✅
+- Este ciclo corre **constantemente**. Esto es **autoreparación**.
 
 ---
 
-**➡️ Next:** [Module 2 — Creating Your KIND Cluster](../02-kind-cluster/README.md)
+**➡️ Siguiente:** [Módulo 2 — Creando tu clúster KIND](../02-kind-cluster/README.md)

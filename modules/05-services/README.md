@@ -1,61 +1,65 @@
-# Module 5 — Services: Internal Networking
+# Módulo 5 — Services: Red interna
 
-> ⏱️ **Time:** 20 minutes | 🎯 **Goal:** Expose your app with a stable internal network address and test it
+> ⏱️ **Tiempo:** 20 minutos | 🎯 **Objetivo:** Exponer tu aplicación con una dirección de red interna estable y probarla
 
 ---
 
-## Why Do We Need Services?
+## ¿Por qué necesitamos Services?
 
-Pods are **ephemeral** — they come and go. When a Pod is replaced, it gets a **new IP address**.
+Los Pods son **efímeros** — aparecen y desaparecen. Cuando un Pod es reemplazado, obtiene una **nueva dirección IP**.
 
-**Problem:** If another service was talking directly to `10.244.0.5`, that connection breaks when the Pod restarts.
+**Problema:** Si otro servicio estaba hablando directamente con `10.244.0.5`, esa conexión se rompe cuando el Pod se reinicia.
 
-**Solution:** A **Service** gives a set of Pods a **stable, permanent address** (DNS name + ClusterIP) that never changes, even as Pods come and go.
+**Solución:** Un **Service** le da a un conjunto de Pods una **dirección estable y permanente** (nombre DNS + ClusterIP) que nunca cambia, aunque los Pods vayan y vengan.
 
 ```
-Before Service:                    After Service:
 
-Client → Pod IP (changes!)         Client → Service (stable!)
-                                              │
-                                              ├── Pod 1 (10.244.0.5)
-                                              ├── Pod 2 (10.244.0.6)
-                                              └── Pod 3 (10.244.0.7)
+Antes del Service:               Después del Service:
 
-                                   Service load-balances across healthy Pods
+Cliente → IP del Pod (¡cambia!)  Cliente → Service (¡estable!)
+│
+├── Pod 1 (10.244.0.5)
+├── Pod 2 (10.244.0.6)
+└── Pod 3 (10.244.0.7)
+
+```
+                               El Service balancea la carga entre Pods saludables
 ```
 
----
-
-## Service Types
-
-| Type | Reachable From | Use Case |
-|------|----------------|---------|
-| **ClusterIP** | Inside cluster only | Default. Microservice-to-microservice |
-| **NodePort** | Outside via Node IP + port (30000-32767) | Dev/test access |
-| **LoadBalancer** | Outside via cloud load balancer | Production on AWS/GCP/Azure |
-| **ExternalName** | Maps to external DNS | Proxy to external services |
-
-> 💡 For our workshop, we use **ClusterIP** (internal) + **Ingress** (external routing). This is the recommended production pattern.
+````
 
 ---
 
-## How Services Find Pods: Label Selectors
+## Tipos de Service
 
-Services use **label selectors** to find their target Pods. The Service doesn't care about Pod names or IPs — only labels.
+| Tipo | Accesible desde | Caso de uso |
+|------|-----------------|-------------|
+| **ClusterIP** | Solo dentro del clúster | Predeterminado. Comunicación entre microservicios |
+| **NodePort** | Desde fuera mediante IP del nodo + puerto (30000-32767) | Acceso de desarrollo o pruebas |
+| **LoadBalancer** | Desde fuera mediante balanceador de carga en la nube | Producción en AWS, GCP o Azure |
+| **ExternalName** | Apunta a un DNS externo | Proxy hacia servicios externos |
+
+> 💡 Para este workshop usamos **ClusterIP** (interno) + **Ingress** (enrutamiento externo). Este es el patrón recomendado en producción.
+
+---
+
+## Cómo encuentran Pods los Services: Label Selectors
+
+Los Services usan **label selectors** para encontrar sus Pods objetivo. El Service no se preocupa por nombres de Pods ni por IPs — solo por labels.
 
 ```yaml
-# Service selector
+# Selector del Service
 selector:
-  app: demo-app      # ← Route to any Pod with this label
+  app: demo-app      # ← Enruta hacia cualquier Pod con esta etiqueta
 
-# Pod template label (must match!)
+# Label de la plantilla del Pod (debe coincidir)
 labels:
-  app: demo-app      # ← This pod will receive traffic
-```
+  app: demo-app      # ← Este pod recibirá tráfico
+````
 
 ---
 
-## Step 1: Review the Service YAML
+## Paso 1: Revisar el YAML del Service
 
 ```bash
 cat manifests/service.yaml
@@ -66,24 +70,24 @@ cat manifests/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-app-svc          # Stable DNS name: demo-app-svc.workshop-app.svc.cluster.local
+  name: demo-app-svc          # Nombre DNS estable: demo-app-svc.workshop-app.svc.cluster.local
   namespace: workshop-app
   labels:
     app: demo-app
 spec:
   selector:
-    app: demo-app              # Routes to all Pods with label app=demo-app
+    app: demo-app              # Enruta a todos los Pods con label app=demo-app
   ports:
     - name: http
       protocol: TCP
-      port: 80                 # Port the Service listens on (inside the cluster)
-      targetPort: 3000         # Port the Node.js app listens on inside the Pod
+      port: 80                 # Puerto donde escucha el Service dentro del clúster
+      targetPort: 3000         # Puerto donde escucha la app Node.js dentro del Pod
   type: ClusterIP
 ```
 
 ---
 
-## Step 2: Apply the Service
+## Paso 2: Aplicar el Service
 
 ```bash
 kubectl apply -f manifests/service.yaml
@@ -91,80 +95,82 @@ kubectl apply -f manifests/service.yaml
 
 ---
 
-## Step 3: Verify the Service
+## Paso 3: Verificar el Service
 
 ```bash
 kubectl get services -n workshop-app
-# or shorthand
+# o forma corta
 kubectl get svc -n workshop-app
 ```
 
-Expected output:
-```
+Salida esperada:
+
+```text
 NAME           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
 demo-app-svc   ClusterIP   10.96.145.23   <none>        80/TCP    15s
 ```
 
 ```bash
-# Detailed view — shows selector, endpoints
+# Vista detallada — muestra selector y endpoints
 kubectl describe svc demo-app-svc -n workshop-app
 ```
 
-Look for the **Endpoints** line — it shows which Pod IPs are currently receiving traffic:
-```
+Busca la línea de **Endpoints** — muestra qué IPs de Pods están recibiendo tráfico en ese momento:
+
+```text
 Endpoints: 10.244.0.5:3000, 10.244.0.6:3000
 ```
 
 ---
 
-## Step 4: Inspect Endpoints
+## Paso 4: Inspeccionar Endpoints
 
-Endpoints are automatically created and updated by the Service to track healthy Pod IPs:
+Los Endpoints se crean y actualizan automáticamente por el Service para seguir las IPs de Pods saludables:
 
 ```bash
 kubectl get endpoints demo-app-svc -n workshop-app
 ```
 
-> 💡 If a Pod fails its readiness probe, it's **removed from the Endpoints** — no more traffic is sent to it. This is how Kubernetes ensures you only route to healthy pods.
+> 💡 Si un Pod falla su readiness probe, se **elimina de los Endpoints** — ya no se le enviará tráfico. Así es como Kubernetes se asegura de enrutar solo hacia pods saludables.
 
 ---
 
-## Step 5: Test the Service with Port-Forward
+## Paso 5: Probar el Service con Port-Forward
 
-ClusterIP is only reachable inside the cluster. We use `port-forward` to tunnel to it temporarily:
+ClusterIP solo es accesible desde dentro del clúster. Usamos `port-forward` para crear un túnel temporal hacia él:
 
 ```bash
 kubectl port-forward svc/demo-app-svc 8080:80 -n workshop-app
 ```
 
-> ⚠️ **Keep this terminal open!** Port-forward only works while the command is actively running. The moment you hit Ctrl+C, the tunnel closes.
+> ⚠️ **¡Deja esta terminal abierta!** Port-forward solo funciona mientras el comando siga corriendo. En el momento en que presionas Ctrl+C, el túnel se cierra.
 
-Now open http://localhost:8080 in your browser. You should see the workshop app!
+Ahora abre [http://localhost:8080](http://localhost:8080) en tu navegador. Deberías ver la app del workshop.
 
-Press `Ctrl+C` when done.
+Presiona `Ctrl+C` cuando termines.
 
-> `port-forward` is a debugging tool only — it's not how production traffic flows. That's what Ingress is for (Module 6).
+> `port-forward` es solo una herramienta de depuración — no es como fluye el tráfico en producción. Para eso está Ingress, en el Módulo 6.
 
 ---
 
-## Step 6: DNS Inside the Cluster
+## Paso 6: DNS dentro del clúster
 
-### Why DNS Matters
+### Por qué importa el DNS
 
-Think about a real application — a frontend that talks to a backend API, which talks to a database. How does the frontend know where to find the backend?
+Piensa en una aplicación real — un frontend que habla con una API backend, y esta con una base de datos. ¿Cómo sabe el frontend dónde encontrar el backend?
 
-Without DNS it would hardcode an IP like `10.244.0.5`. But pod IPs change every time a pod is replaced. Hardcoding IPs would break constantly.
+Sin DNS, tendría que usar una IP fija como `10.244.0.5`. Pero las IPs de los pods cambian cada vez que un pod es reemplazado. Dejar IPs escritas directamente fallaría todo el tiempo.
 
-**Kubernetes DNS solves this.** Every Service automatically gets a stable DNS name. Your frontend calls `http://backend-svc` and CoreDNS resolves that to the correct Service IP, which load-balances to a healthy pod — no matter how many times those pods have been replaced.
+**Kubernetes DNS resuelve esto.** Cada Service recibe automáticamente un nombre DNS estable. Tu frontend llama a `http://backend-svc` y CoreDNS resuelve eso a la IP correcta del Service, que balancea la carga hacia un pod saludable, sin importar cuántas veces esos pods hayan sido reemplazados.
 
 ```
-Your App Pod
+Pod de tu app
     │
-    │  http://demo-app-svc   ← stable name, never changes
+    │  http://demo-app-svc   ← nombre estable, nunca cambia
     ▼
-CoreDNS (built-in K8s DNS server)
+CoreDNS (servidor DNS integrado de K8s)
     │
-    │  resolves to 10.96.145.23  (Service ClusterIP)
+    │  resuelve a 10.96.145.23  (ClusterIP del Service)
     ▼
 Service: demo-app-svc
     │
@@ -172,102 +178,114 @@ Service: demo-app-svc
     └── Pod 10.244.0.6:3000
 ```
 
-### The DNS Name Format
+### Formato del nombre DNS
 
-Every Service gets a DNS name in this format:
-```
+Cada Service recibe un nombre DNS con este formato:
+
+```text
 <service-name>.<namespace>.svc.cluster.local
 ```
 
-For our service:
-```
+Para nuestro Service:
+
+```text
 demo-app-svc.workshop-app.svc.cluster.local
 ```
 
-Within the same namespace you can use just the service name:
-```
+Dentro del mismo namespace puedes usar solo el nombre del service:
+
+```text
 demo-app-svc
 ```
 
-### Test It
+### Pruébalo
 
-We'll exec into an already-running pod to test DNS — no extra image pull needed since `wget` is already available in our Node Alpine image.
+Vamos a entrar a un pod que ya está corriendo para probar el DNS — no hace falta descargar otra imagen porque `wget` ya está disponible en nuestra imagen Node Alpine.
 
-**Step 1 — get a running pod name:**
+**Paso 1 — obtener el nombre de un pod en ejecución:**
+
 ```bash
 kubectl get pods -n workshop-app
 ```
 
-**Step 2 — test the full DNS name:**
+**Paso 2 — probar el nombre DNS completo:**
+
 ```bash
 kubectl exec -it <pod-name> -n workshop-app -- \
   wget -qO- http://demo-app-svc.workshop-app.svc.cluster.local | head -5
 ```
 
-**Step 3 — test the shorthand (same namespace shortcut):**
+**Paso 3 — probar la forma corta, atajo del mismo namespace:**
+
 ```bash
 kubectl exec -it <pod-name> -n workshop-app -- \
   wget -qO- http://demo-app-svc | head -5
 ```
 
-Both return the same HTML. Kubernetes automatically appends `.workshop-app.svc.cluster.local` when pods are in the same namespace.
+Ambos devuelven el mismo HTML. Kubernetes agrega automáticamente `.workshop-app.svc.cluster.local` cuando los pods están en el mismo namespace.
 
-**Step 4 — hit the health endpoint to confirm the full chain:**
+**Paso 4 — acceder al endpoint de salud para confirmar toda la cadena:**
+
 ```bash
 kubectl exec -it <pod-name> -n workshop-app -- \
   wget -qO- http://demo-app-svc/health
 ```
 
-Expected output:
+Salida esperada:
+
 ```json
 {"status":"ok","pod":"demo-app-7d9f8b6c4-abc12","uptime":"5m 30s"}
 ```
 
-### What You Just Proved
+### Lo que acabas de demostrar
 
-- `demo-app-svc` resolved to the Service ClusterIP via CoreDNS ✅
-- The Service load-balanced the request to one of your pods ✅
-- The pod responded through the Service, not by direct IP ✅
+* `demo-app-svc` se resolvió hacia el ClusterIP del Service mediante CoreDNS ✅
+* El Service balanceó la solicitud hacia uno de tus pods ✅
+* El pod respondió a través del Service, no por IP directa ✅
 
-This is exactly how microservices communicate inside a real Kubernetes cluster.
+Así es exactamente como se comunican los microservicios dentro de un clúster real de Kubernetes.
 
 ---
 
-## 🧪 Lab: Watch Endpoints Update
+## 🧪 Laboratorio: Mira cómo se actualizan los Endpoints
 
-Open two terminal windows side by side.
+Abre dos ventanas de terminal lado a lado.
 
-**Terminal 1 — start watching first:**
+**Terminal 1 — comienza observando primero:**
+
 ```bash
 kubectl get endpoints demo-app-svc -n workshop-app -w
 ```
 
-You'll see:
-```
+Vas a ver:
+
+```text
 NAME           ENDPOINTS                           AGE
 demo-app-svc   10.244.0.5:3000,10.244.0.6:3000    5m
 ```
 
-**Terminal 2 — delete a pod:**
+**Terminal 2 — elimina un pod:**
+
 ```bash
-# Get a pod name
+# Obtener el nombre de un pod
 kubectl get pods -n workshop-app
 
-# Delete it
+# Eliminarlo
 kubectl delete pod <pod-name> -n workshop-app
 ```
 
-Watch Terminal 1 — you'll see the deleted pod's IP vanish instantly, then a new IP appear within seconds as Kubernetes creates a replacement:
+Mira la Terminal 1 — verás que la IP del pod eliminado desaparece al instante, y luego aparece una IP nueva en pocos segundos cuando Kubernetes crea el reemplazo:
 
-```
+```text
 NAME           ENDPOINTS                           AGE
 demo-app-svc   10.244.0.5:3000,10.244.0.6:3000    5m
-demo-app-svc   10.244.0.5:3000                     5m   ← pod gone
-demo-app-svc   10.244.0.5:3000,10.244.0.7:3000    5m   ← new pod registered
+demo-app-svc   10.244.0.5:3000                     5m   ← el pod desapareció
+demo-app-svc   10.244.0.5:3000,10.244.0.7:3000    5m   ← nuevo pod registrado
 ```
 
-The Service endpoint list updates automatically. Your DNS name `demo-app-svc` always pointed at healthy pods the entire time — this is why Services exist.
+La lista de endpoints del Service se actualiza automáticamente. Tu nombre DNS `demo-app-svc` siempre apuntó a pods saludables durante todo el proceso — por eso existen los Services.
 
 ---
 
-**➡️ Next:** [Module 6 — Ingress](../06-ingress/README.md)
+**➡️ Siguiente:** [Módulo 6 — Ingress](../06-ingress/README.md)
+

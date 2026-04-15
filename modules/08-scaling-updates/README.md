@@ -1,37 +1,37 @@
-# Module 8 — Scaling & Rolling Updates
+# Módulo 8 — Escalado y actualizaciones graduales
 
-> ⏱️ **Time:** 20 minutes | 🎯 **Goal:** Scale your app, perform a zero-downtime rolling update, and roll back
-
----
-
-## Scaling in Kubernetes
-
-Kubernetes supports two types of scaling:
-
-| Type | How | When |
-|------|-----|------|
-| **Horizontal Scaling** | Add more Pods | Stateless apps, handle more traffic |
-| **Vertical Scaling** | Give each Pod more CPU/RAM | Single-threaded apps, database pods |
-
-For web applications, **horizontal scaling** is always the right approach.
+> ⏱️ **Tiempo:** 20 minutos | 🎯 **Objetivo:** Escalar tu app, hacer una actualización gradual sin tiempo de inactividad y revertirla
 
 ---
 
-## Manual Horizontal Scaling
+## Escalado en Kubernetes
 
-### Scale Up
+Kubernetes soporta dos tipos de escalado:
+
+| Tipo | Cómo | Cuándo |
+|------|------|--------|
+| **Escalado horizontal** | Agregar más Pods | Apps sin estado, manejar más tráfico |
+| **Escalado vertical** | Darle más CPU o RAM a cada Pod | Apps de un solo hilo, pods de base de datos |
+
+Para aplicaciones web, el **escalado horizontal** casi siempre es el enfoque correcto.
+
+---
+
+## Escalado horizontal manual
+
+### Escalar hacia arriba
 
 ```bash
-# Scale to 5 replicas
+# Escalar a 5 réplicas
 kubectl scale deployment demo-app --replicas=5 -n workshop-app
 
-# Watch pods appear
+# Observar cómo aparecen los pods
 kubectl get pods -n workshop-app -w
-```
+````
 
-Now open http://demo.local and refresh several times — you'll see **5 different pod names** cycling through in the hero card. Each pod's request counter will increment independently.
+Ahora abre [http://demo.local](http://demo.local) y refresca varias veces — verás **5 nombres de pod distintos** rotando en la tarjeta principal. El contador de solicitudes de cada pod aumentará de forma independiente.
 
-### Scale Down
+### Escalar hacia abajo
 
 ```bash
 kubectl scale deployment demo-app --replicas=2 -n workshop-app
@@ -39,12 +39,12 @@ kubectl scale deployment demo-app --replicas=2 -n workshop-app
 
 ---
 
-## Horizontal Pod Autoscaler (HPA)
+## Horizontal Pod Autoscaler, HPA
 
-In production, you don't manually scale — you let Kubernetes do it based on metrics.
+En producción normalmente no escalas manualmente — dejas que Kubernetes lo haga según métricas.
 
 ```yaml
-# manifests/hpa.yaml (review only — requires metrics-server)
+# manifests/hpa.yaml (solo revisión, requiere metrics-server)
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -63,51 +63,51 @@ spec:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70    # Scale up when avg CPU > 70%
+          averageUtilization: 70    # Escala cuando el CPU promedio supera 70%
 ```
 
-> ⚠️ HPA requires metrics-server. We review the YAML but won't apply it today.
+> ⚠️ HPA requiere metrics-server. Revisamos el YAML, pero no lo aplicaremos hoy.
 
 ---
 
-## Rolling Updates: Zero-Downtime Deployments
+## Rolling updates, despliegues sin caída
 
-A **rolling update** replaces Pods one at a time, ensuring some are always available.
+Una **actualización gradual** reemplaza los Pods uno por uno, garantizando que siempre haya algunos disponibles.
 
+```text
+Antes de la actualización: [v1.0.0] [v1.0.0] [v1.0.0] [v1.0.0]
+
+Paso 1:                    [v1.0.0] [v1.0.0] [v1.0.0] [v2.0.0]   ← se crea 1 pod nuevo
+Paso 2:                    [v1.0.0] [v1.0.0] [v2.0.0] [v2.0.0]   ← se elimina 1 pod viejo
+Paso 3:                    [v1.0.0] [v2.0.0] [v2.0.0] [v2.0.0]
+Paso 4:                    [v2.0.0] [v2.0.0] [v2.0.0] [v2.0.0]   ← completo
 ```
-Before update: [v1.0.0] [v1.0.0] [v1.0.0] [v1.0.0]
 
-Step 1:        [v1.0.0] [v1.0.0] [v1.0.0] [v2.0.0]   ← 1 new pod created
-Step 2:        [v1.0.0] [v1.0.0] [v2.0.0] [v2.0.0]   ← 1 old pod removed
-Step 3:        [v1.0.0] [v2.0.0] [v2.0.0] [v2.0.0]
-Step 4:        [v2.0.0] [v2.0.0] [v2.0.0] [v2.0.0]   ← complete!
-```
-
-### Rolling Update Strategy (already in our deployment.yaml)
+### Estrategia RollingUpdate, ya está en deployment.yaml
 
 ```yaml
 spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1         # Create 1 extra Pod before removing an old one
-      maxUnavailable: 0   # Never go below desired replica count (zero-downtime)
+      maxSurge: 1         # Crear 1 pod extra antes de quitar uno viejo
+      maxUnavailable: 0   # Nunca bajar del número deseado de réplicas, cero downtime
 ```
 
 ---
 
-## Step 1: Build v2.0.0 of the App
+## Paso 1 — Construir la versión v2.0.0 de la app
 
-For the rolling update demo, we'll build a v2 image with a small change. Open `app/Dockerfile` and change the `APP_VERSION` env var line:
+Para la demo de rolling update, vamos a construir una imagen v2 con un pequeño cambio. Abre `app/Dockerfile` y cambia la línea de la variable `APP_VERSION`:
 
 ```dockerfile
-# Change this line:
+# Cambia esta línea:
 ENV APP_VERSION=1.0.0
-# To:
+# Por esta:
 ENV APP_VERSION=2.0.0
 ```
 
-Then build and load it:
+Luego constrúyela y cárgala:
 
 ```bash
 docker build -t k8s-workshop-demo:2.0.0 ./app
@@ -116,23 +116,23 @@ kind load docker-image k8s-workshop-demo:2.0.0 --name workshop
 
 ---
 
-## Step 2: Perform the Rolling Update
+## Paso 2 — Ejecutar la actualización gradual
 
 ```bash
-# Terminal 1: Watch pods update in real time
+# Terminal 1: observar los pods en tiempo real
 kubectl get pods -n workshop-app -w
 
-# Terminal 2: Trigger the rolling update
+# Terminal 2: disparar la actualización gradual
 kubectl set image deployment/demo-app \
   demo-app=k8s-workshop-demo:2.0.0 \
   -n workshop-app
 ```
 
-Watch Terminal 1 — new `v2.0.0` pods come up **before** old `v1.0.0` pods are terminated. Keep http://demo.local open — the version badge in the top-right corner will flip from `v1.0.0` to `v2.0.0` as your requests hit updated pods.
+Observa la Terminal 1 — los nuevos pods con `v2.0.0` suben **antes** de que los pods viejos con `v1.0.0` se eliminen. Mantén abierto [http://demo.local](http://demo.local) — la insignia de versión en la esquina superior derecha cambiará de `v1.0.0` a `v2.0.0` a medida que tus solicitudes lleguen a pods ya actualizados.
 
 ---
 
-## Step 3: Check Rollout Status
+## Paso 3 — Revisar el estado del rollout
 
 ```bash
 kubectl rollout status deployment/demo-app -n workshop-app
@@ -142,13 +142,14 @@ kubectl rollout status deployment/demo-app -n workshop-app
 
 ---
 
-## Step 4: View Rollout History
+## Paso 4 — Ver el historial del rollout
 
 ```bash
 kubectl rollout history deployment/demo-app -n workshop-app
 ```
 
-Add a change-cause annotation for better history tracking:
+Agrega una anotación change-cause para llevar mejor historial:
+
 ```bash
 kubectl annotate deployment demo-app \
   kubernetes.io/change-cause="Upgraded app to v2.0.0" \
@@ -157,73 +158,74 @@ kubectl annotate deployment demo-app \
 
 ---
 
-## Step 5: Roll Back!
+## Paso 5 — Revertir
 
-Something went wrong? Roll back instantly to the previous version:
+¿Algo salió mal? Revierte al instante a la versión anterior:
 
 ```bash
-# Roll back to previous revision
+# Revertir a la revisión previa
 kubectl rollout undo deployment/demo-app -n workshop-app
 
-# Or roll back to a specific revision number
+# O revertir a una revisión específica
 kubectl rollout undo deployment/demo-app --to-revision=1 -n workshop-app
 
-# Watch the rollback
+# Observar el rollback
 kubectl rollout status deployment/demo-app -n workshop-app
 ```
 
-Open http://demo.local — the version badge flips back to `v1.0.0`. That's the power of rollbacks.
+Abre [http://demo.local](http://demo.local) — la versión vuelve a `v1.0.0`. Esa es la fuerza de los rollbacks.
 
 ---
 
-## Step 6: The GitOps Way (Better Than kubectl set image)
+## Paso 6 — La forma GitOps, mejor que kubectl set image
 
-In production, update the image tag in your YAML file and apply it:
+En producción, lo correcto es actualizar la etiqueta de imagen en tu YAML y luego aplicarlo:
 
 ```bash
-# Edit manifests/deployment.yaml — change:
+# Edita manifests/deployment.yaml y cambia:
 #   image: k8s-workshop-demo:1.0.0
-# To:
+# Por:
 #   image: k8s-workshop-demo:2.0.0
 
 kubectl apply -f manifests/deployment.yaml
 ```
 
-This is better because:
-- ✅ The change is in version control (git history = audit log)
-- ✅ Reviewable via Pull Request before it hits the cluster
-- ✅ Rollback = `git revert` + `kubectl apply`
+Esto es mejor porque:
+
+* ✅ El cambio queda en control de versiones, historial de git como auditoría
+* ✅ Puede revisarse en un Pull Request antes de llegar al clúster
+* ✅ Un rollback puede hacerse con `git revert` y luego `kubectl apply`
 
 ---
 
-## 🧪 Lab: Simulate a Bad Deploy
+## 🧪 Laboratorio — Simular un mal despliegue
 
 ```bash
-# 1. Deploy a broken image (non-existent tag)
+# 1. Desplegar una imagen rota, tag inexistente
 kubectl set image deployment/demo-app \
   demo-app=k8s-workshop-demo:this-tag-does-not-exist \
   -n workshop-app
 
-# 2. Watch what happens
+# 2. Observar qué pasa
 kubectl get pods -n workshop-app -w
-# You'll see: ErrImagePull → ImagePullBackOff
-# Old pods stay running! The rolling update STOPS because new pods can't start.
+# Verás: ErrImagePull → ImagePullBackOff
+# Los pods viejos siguen corriendo, la actualización se DETIENE porque los nuevos pods no pueden arrancar
 
-# 3. Check rollout status
+# 3. Revisar el estado del rollout
 kubectl rollout status deployment/demo-app -n workshop-app --timeout=30s
 
-# 4. Roll back to fix it instantly
+# 4. Revertir al instante para corregirlo
 kubectl rollout undo deployment/demo-app -n workshop-app
 
-# 5. Confirm everything is healthy
+# 5. Confirmar que todo está saludable
 kubectl get pods -n workshop-app
 ```
 
-> 💡 This is why `maxUnavailable: 0` matters — the old pods kept running the whole time, so your users never saw an outage.
+> 💡 Por eso `maxUnavailable: 0` es importante — los pods viejos siguieron corriendo todo el tiempo, así que tus usuarios nunca vieron una caída.
 
 ---
 
-## kubectl Rollout Cheat Sheet
+## Hoja rápida de kubectl rollout
 
 ```bash
 kubectl scale deployment demo-app --replicas=N -n workshop-app
@@ -233,9 +235,9 @@ kubectl rollout undo deployment/demo-app -n workshop-app
 kubectl rollout undo deployment/demo-app --to-revision=1 -n workshop-app
 kubectl rollout pause deployment/demo-app -n workshop-app
 kubectl rollout resume deployment/demo-app -n workshop-app
-kubectl rollout restart deployment/demo-app -n workshop-app  # Force pod replacement (useful after config changes)
+kubectl rollout restart deployment/demo-app -n workshop-app  # Fuerza reemplazo de pods, útil después de cambios de configuración
 ```
 
 ---
 
-**➡️ Next:** [Module 9 — Bonus: Troubleshooting & Tips](../09-bonus/README.md)
+**➡️ Siguiente:** [Módulo 9 — Bonus: Troubleshooting y consejos](../09-bonus/README.md)
