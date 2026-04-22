@@ -53,6 +53,14 @@ kind load docker-image k8s-workshop-demo:1.0.0 --name workshop
 
 > 💡 Esto es específico de KIND. En un clúster real en AWS, GCP o Azure, subirías la imagen a un registry de contenedores como ECR, GCR o GHCR, y Kubernetes la descargaría desde allí.
 
+Nota: al usar podman puede ser necesario importar en kind directamente el tar file exportando la imagen local, porque el kind import con podman es todavia en fase experimental.
+
+```bash
+podman save localhost/k8s-workshop-demo:1.0.0 -o workshop.tar
+kind load image-archive --name workshop workshop.tar 
+```
+En el ejemplo, la imagen previamente descargada en podman local para el usuario en uso era `localhost/k8s-workshop-demo:1.0.0`, se exportó como `workshop.tar`, y finalmente se importó con el command line de kind.
+
 ---
 
 ## Paso 3: Revisar el YAML del Deployment
