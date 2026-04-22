@@ -36,6 +36,9 @@ Verifica que la imagen fue construida:
 
 ```bash
 docker images | grep k8s-workshop-demo
+
+#PowerShell
+docker images --filter "reference=k8s-workshop-demo*"
 ```
 
 ---

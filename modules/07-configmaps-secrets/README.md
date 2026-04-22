@@ -156,6 +156,11 @@ kubectl describe secret demo-app-secret -n workshop-app
 kubectl get secret demo-app-secret -n workshop-app \
   -o jsonpath='{.data.DB_PASSWORD}' | base64 -d
 echo ""
+
+#PowerShell
+$base64Pass = kubectl get secret demo-app-secret -n workshop-app -o jsonpath='{.data.DB_PASSWORD}'
+[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($base64Pass))
+
 ```
 
 > 💡 Aplicar el Secret por sí solo tampoco hace nada en los pods que ya están corriendo.
@@ -212,6 +217,10 @@ Usa uno de los nombres de pod que te devolvió `kubectl get pods`:
 ```bash
 kubectl exec -it <pod-name> -n workshop-app -- \
   env | grep -E "APP_ENV|APP_VERSION|LOG_LEVEL|FEATURE_NEW_UI|DB_PASSWORD|API_KEY"
+
+#PowerShell
+kubectl exec -it <pod-name> -n workshop-app -- \
+  env | Select-String "APP_ENV|APP_VERSION|LOG_LEVEL|FEATURE_NEW_UI|DB_PASSWORD|API_KEY"
 ```
 
 Salida esperada:
@@ -281,6 +290,8 @@ kubectl exec -it <pod-name> -n workshop-app -- cat /etc/config/LOG_LEVEL
 # La variable de entorno NO cambió, quedó fijada al iniciar el pod
 kubectl exec -it <pod-name> -n workshop-app -- env | grep LOG_LEVEL
 # → LOG_LEVEL=info   (todavía con el valor anterior)
+#PowerShell
+kubectl exec -it <pod-name> -n workshop-app -- env | Select-String LOG_LEVEL
 
 # Para actualizar variables de entorno necesitas un rollout restart
 kubectl rollout restart deployment/demo-app -n workshop-app
@@ -322,6 +333,12 @@ kubectl get secret demo-app-secret -n workshop-app \
   -o jsonpath='{range .data.*}{@}{"\n"}{end}' | while read val; do
     echo "$val" | base64 -d; echo ""
   done
+#PowerShell
+kubectl get secret demo-app-secret -n workshop-app -o jsonpath="{range .data.*}{@}{'\n'}{end}" |
+ForEach-Object {
+    [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_))
+    ""
+}
 
 # 4. Ver la alternativa envFrom, inyectar todas las claves del ConfigMap de una sola vez
 kubectl explain pod.spec.containers.envFrom

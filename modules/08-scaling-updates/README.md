@@ -123,9 +123,7 @@ kind load docker-image k8s-workshop-demo:2.0.0 --name workshop
 kubectl get pods -n workshop-app -w
 
 # Terminal 2: disparar la actualización gradual
-kubectl set image deployment/demo-app \
-  demo-app=k8s-workshop-demo:2.0.0 \
-  -n workshop-app
+kubectl set image deployment/demo-app demo-app=k8s-workshop-demo:2.0.0 -n workshop-app
 ```
 
 Observa la Terminal 1 — los nuevos pods con `v2.0.0` suben **antes** de que los pods viejos con `v1.0.0` se eliminen. Mantén abierto [http://demo.local](http://demo.local) — la insignia de versión en la esquina superior derecha cambiará de `v1.0.0` a `v2.0.0` a medida que tus solicitudes lleguen a pods ya actualizados.
@@ -151,9 +149,7 @@ kubectl rollout history deployment/demo-app -n workshop-app
 Agrega una anotación change-cause para llevar mejor historial:
 
 ```bash
-kubectl annotate deployment demo-app \
-  kubernetes.io/change-cause="Upgraded app to v2.0.0" \
-  -n workshop-app
+kubectl annotate deployment demo-app kubernetes.io/change-cause="Upgraded app to v2.0.0" -n workshop-app
 ```
 
 ---
@@ -202,9 +198,7 @@ Esto es mejor porque:
 
 ```bash
 # 1. Desplegar una imagen rota, tag inexistente
-kubectl set image deployment/demo-app \
-  demo-app=k8s-workshop-demo:this-tag-does-not-exist \
-  -n workshop-app
+kubectl set image deployment/demo-app demo-app=k8s-workshop-demo:this-tag-does-not-exist -n workshop-app
 
 # 2. Observar qué pasa
 kubectl get pods -n workshop-app -w

@@ -115,6 +115,9 @@ Verifica que esté dentro del clúster:
 
 ```bash
 docker exec workshop-control-plane crictl images | grep traefik
+
+#PowerShell
+docker exec workshop-control-plane crictl images | Select-String "traefik"
 ```
 
 ---

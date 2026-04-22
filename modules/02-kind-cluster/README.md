@@ -171,8 +171,11 @@ kubectl get pods -n kube-system
 # ¿Qué está haciendo el API server?
 kubectl get componentstatuses 2>/dev/null || echo "Usa: kubectl get --raw='/readyz?verbose'"
 
-# ¿Qué recursos puede administrar Kubernetes?
+# ¿Qué recursos puede administrar Kubernetes? - Linux/WSL
 kubectl api-resources | head -30
+
+# ¿Qué recursos puede administrar Kubernetes? - PowerShell
+kubectl api-resources | Select-Object -First 30
 ```
 
 ---
